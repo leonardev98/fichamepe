@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+@import "@heroui/styles";
+
+:root {
+  --fp-primary: #6c63ff;
+  --fp-accent: #c8f135;
+  --fp-bg-dark: #1a1a2e;
+  --fp-bg-light: #f5f5ff;
+  --fp-text-on-dark: #ffffff;
+  --fp-text-on-light: #1a1a2e;
+  --fp-surface: #22223f;
+  --fp-surface-elevated: #2a2a4a;
+  --fp-border: rgb(255 255 255 / 0.1);
+  --fp-muted: rgb(255 255 255 / 0.65);
+}
+
+@theme inline {
+  --color-primary: var(--fp-primary);
+  --color-accent: var(--fp-accent);
+  --color-background: var(--fp-bg-dark);
+  --color-foreground: var(--fp-text-on-dark);
+  --color-on-light: var(--fp-text-on-light);
+  --color-surface: var(--fp-surface);
+  --color-surface-elevated: var(--fp-surface-elevated);
+  --color-border: var(--fp-border);
+  --color-muted: var(--fp-muted);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: var(--fp-bg-dark);
+  color: var(--fp-text-on-dark);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
