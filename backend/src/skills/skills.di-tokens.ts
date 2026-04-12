@@ -1,0 +1,1 @@
+export const REPOSITORY_TOKEN = Symbol('SKILLS_REPOSITORY');
