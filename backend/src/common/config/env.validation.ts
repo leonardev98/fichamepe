@@ -105,6 +105,23 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   MAIL_FROM?: string;
+
+  /** OAuth Google: las tres deben estar definidas para habilitar el flujo. */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  GOOGLE_CLIENT_ID?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  GOOGLE_CLIENT_SECRET?: string;
+
+  /** URL exacta autorizada en Google Cloud (ej. https://api.tudominio.com/auth/google/callback). */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  GOOGLE_CALLBACK_URL?: string;
 }
 
 function formatValidationErrors(

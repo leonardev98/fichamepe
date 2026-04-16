@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Get,
   Post,
@@ -8,6 +10,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { LoginDto } from '../../application/dto/login.dto';
@@ -32,10 +35,16 @@ import { extractRefreshTokenFromRequest } from '../utils/refresh-token.extractor
 import { AuthCookieService } from '../services/auth-cookie.service';
 import { AuthAuditService } from '../services/auth-audit.service';
 import { getRequestIp, getRequestUserAgent } from '../../../common/utils/request-metadata';
+import { GoogleOAuthStartGuard } from '../guards/google-oauth-start.guard';
+import { GoogleOAuthCallbackGuard } from '../guards/google-oauth-callback.guard';
+import type { GoogleOAuthProfilePayload } from '../strategies/google.strategy';
+import { decodeGoogleOAuthState } from '../utils/google-oauth-state';
+import { AuthenticateWithGoogleUseCase } from '../../application/use-cases/authenticate-with-google.use-case';
 
 @Controller('auth')
 export class AuthController {
   constructor(
+    private readonly config: ConfigService,
     private readonly registerUser: RegisterUserUseCase,
     private readonly loginUser: LoginUserUseCase,
     private readonly refreshTokens: RefreshTokensUseCase,
@@ -46,7 +55,69 @@ export class AuthController {
     private readonly resendVerificationEmail: ResendVerificationEmailUseCase,
     private readonly authCookies: AuthCookieService,
     private readonly authAudit: AuthAuditService,
+    private readonly authenticateWithGoogle: AuthenticateWithGoogleUseCase,
   ) {}
+
+  @Get('google')
+  @UseGuards(GoogleOAuthStartGuard)
+  googleAuth(): void {
+    /* Passport redirige a Google antes de ejecutar el cuerpo. */
+  }
+
+  @Get('google/callback')
+  @UseGuards(GoogleOAuthCallbackGuard)
+  async googleAuthCallback(
+    @Req() req: Request,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const profile = req.user as GoogleOAuthProfilePayload;
+    const rawState =
+      typeof req.query['state'] === 'string' ? req.query['state'] : '';
+    const fe = (
+      this.config.get<string>('FRONTEND_URL')?.trim() ||
+      'http://localhost:3000'
+    ).replace(/\/$/, '');
+    const loginWithGoogleError = () => {
+      const login = new URL('/auth/login', `${fe}/`);
+      login.searchParams.set('error', 'google');
+      res.redirect(302, login.toString());
+    };
+    let state;
+    try {
+      state = decodeGoogleOAuthState(rawState);
+    } catch {
+      loginWithGoogleError();
+      return;
+    }
+    let tokens;
+    try {
+      tokens = await this.authenticateWithGoogle.execute({
+        googleId: profile.googleId,
+        email: profile.email,
+        fullName: profile.fullName,
+        state,
+      });
+    } catch (e) {
+      if (
+        e instanceof ConflictException ||
+        e instanceof BadRequestException ||
+        e instanceof UnauthorizedException
+      ) {
+        loginWithGoogleError();
+        return;
+      }
+      throw e;
+    }
+    this.authCookies.setAuthCookies(res, tokens.refreshToken, tokens.role);
+    await this.authAudit.recordLoginEvent({
+      userId: tokens.userId,
+      ip: getRequestIp(req),
+      userAgent: getRequestUserAgent(req),
+    });
+    const redirect = new URL('/auth/google/callback', `${fe}/`);
+    redirect.searchParams.set('from', tokens.redirectPath);
+    res.redirect(302, redirect.toString());
+  }
 
   @Post('register')
   @UseGuards(ThrottlerGuard)

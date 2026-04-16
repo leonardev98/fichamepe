@@ -27,7 +27,11 @@ import { GetAuthenticatedUserUseCase } from './application/use-cases/get-authent
 import { RequestPasswordResetUseCase } from './application/use-cases/request-password-reset.use-case';
 import { VerifyEmailUseCase } from './application/use-cases/verify-email.use-case';
 import { ResendVerificationEmailUseCase } from './application/use-cases/resend-verification-email.use-case';
+import { AuthenticateWithGoogleUseCase } from './application/use-cases/authenticate-with-google.use-case';
 import { AUTH_TOKEN_SERVICE } from './auth.di-tokens';
+import { GoogleStrategy } from './infrastructure/strategies/google.strategy';
+import { GoogleOAuthStartGuard } from './infrastructure/guards/google-oauth-start.guard';
+import { GoogleOAuthCallbackGuard } from './infrastructure/guards/google-oauth-callback.guard';
 
 @Module({
   imports: [
@@ -64,6 +68,10 @@ import { AUTH_TOKEN_SERVICE } from './auth.di-tokens';
     CompletePasswordResetUseCase,
     VerifyEmailUseCase,
     ResendVerificationEmailUseCase,
+    AuthenticateWithGoogleUseCase,
+    GoogleStrategy,
+    GoogleOAuthStartGuard,
+    GoogleOAuthCallbackGuard,
     JwtStrategy,
     JwtRefreshStrategy,
     JwtAuthGuard,

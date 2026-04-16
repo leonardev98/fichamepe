@@ -8,8 +8,10 @@ export class User {
   id: string;
   email: string;
   fullName: string | null;
-  /** Hash almacenado (columna `password` en BD). */
-  password: string;
+  /** Hash almacenado (columna `password` en BD). Null si la cuenta es solo OAuth (Google). */
+  password: string | null;
+  /** Subject de Google (`sub`); null si la cuenta no usa Google. */
+  googleId: string | null;
   role: UserRole;
   isActive: boolean;
   isPro: boolean;

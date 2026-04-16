@@ -19,7 +19,8 @@ function toDomain(row: UserOrmEntity): User {
   u.id = row.id;
   u.email = row.email;
   u.fullName = row.fullName ?? null;
-  u.password = row.password;
+  u.password = row.password ?? null;
+  u.googleId = row.googleId ?? null;
   u.role = row.role;
   u.isActive = row.isActive;
   u.isPro = row.isPro;
@@ -46,6 +47,11 @@ export class UserTypeOrmRepository implements IUserRepository {
   async findByEmail(email: string): Promise<User | null> {
     const normalized = email.trim().toLowerCase();
     const row = await this.repo.findOne({ where: { email: normalized } });
+    return row ? toDomain(row) : null;
+  }
+
+  async findByGoogleId(googleId: string): Promise<User | null> {
+    const row = await this.repo.findOne({ where: { googleId } });
     return row ? toDomain(row) : null;
   }
 
@@ -98,11 +104,15 @@ export class UserTypeOrmRepository implements IUserRepository {
     const row = this.repo.create({
       email: data.email.trim().toLowerCase(),
       fullName: data.fullName?.trim() ? data.fullName.trim() : null,
-      password: data.passwordHash,
+      password: data.passwordHash ?? null,
+      googleId: data.googleId ?? null,
       role: data.role ?? UserRole.Freelancer,
       referralCode,
       referredByUserId: data.referredByUserId ?? null,
       referralMigrationCredits: 0,
+      ...(data.markEmailVerified
+        ? { emailVerifiedAt: new Date() }
+        : {}),
     });
     const saved = await this.repo.save(row);
     return toDomain(saved);
@@ -142,6 +152,9 @@ export class UserTypeOrmRepository implements IUserRepository {
     }
     if (patch.role !== undefined) {
       row.role = patch.role;
+    }
+    if (patch.googleId !== undefined) {
+      row.googleId = patch.googleId;
     }
     const saved = await this.repo.save(row);
     return toDomain(saved);

@@ -18,8 +18,11 @@ export class UserOrmEntity {
   @Column({ type: 'varchar', nullable: true })
   fullName: string | null;
 
-  @Column({ type: 'varchar' })
-  password: string;
+  @Column({ type: 'varchar', nullable: true })
+  password: string | null;
+
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  googleId: string | null;
 
   @Column({
     type: 'varchar',

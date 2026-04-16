@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,11 @@ import {
 } from "@/lib/api/auth.api";
 import { resolvePostLoginHref } from "@/lib/post-login-redirect";
 import { useAuthStore } from "@/store/auth.store";
+import { GoogleMark } from "@/components/auth/GoogleMark";
+import {
+  buildGoogleOAuthStartUrl,
+  GOOGLE_OAUTH_MISSING_API_URL_MESSAGE,
+} from "@/lib/google-oauth";
 
 const loginSchema = z.object({
   email: z.string().min(1, "El correo es obligatorio").email("Correo inválido"),
@@ -26,9 +31,19 @@ type LoginForm = z.infer<typeof loginSchema>;
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const googleError = searchParams.get("error") === "google";
   const { openRegister, openForgotPassword } = useAuthModals();
   const login = useAuthStore((s) => s.login);
   const setAccessToken = useAuthStore((s) => s.setAccessToken);
+
+  const googleOAuthHref = useMemo(() => {
+    const from = searchParams.get("from");
+    return buildGoogleOAuthStartUrl({
+      from:
+        typeof from === "string" && from.startsWith("/") ? from : "/",
+    });
+  }, [searchParams]);
+
   const {
     register,
     handleSubmit,
@@ -137,6 +152,13 @@ function LoginPageContent() {
               <p className="text-sm text-red-400">{errors.root.message}</p>
             )}
 
+            {googleError ? (
+              <p className="text-sm text-red-400" role="alert">
+                No pudimos iniciar sesión con Google. Si ya tienes cuenta con
+                contraseña, usa el formulario de arriba o restablece tu contraseña.
+              </p>
+            ) : null}
+
             <Button
               type="submit"
               variant="primary"
@@ -146,6 +168,36 @@ function LoginPageContent() {
               {isSubmitting ? "Entrando…" : "Continuar"}
             </Button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden>
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs font-medium uppercase tracking-wide text-muted">
+              <span className="bg-surface/90 px-3">O continúa con</span>
+            </div>
+          </div>
+
+          {googleOAuthHref ? (
+            <a
+              href={googleOAuthHref}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface-elevated px-4 py-3 font-medium text-foreground no-underline hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <GoogleMark className="size-5 shrink-0" aria-hidden />
+              Continuar con Google
+            </a>
+          ) : (
+            <button
+              type="button"
+              className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-border bg-surface-elevated px-4 py-3 font-medium text-muted opacity-70"
+              onClick={() =>
+                window.alert(GOOGLE_OAUTH_MISSING_API_URL_MESSAGE)
+              }
+            >
+              <GoogleMark className="size-5 shrink-0 opacity-60" aria-hidden />
+              Continuar con Google
+            </button>
+          )}
 
           <p className="mt-6 text-center text-sm text-muted">
             ¿No tienes cuenta?{" "}

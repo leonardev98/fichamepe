@@ -29,6 +29,11 @@ export class LoginUserUseCase {
     if (!user.isActive) {
       throw new UnauthorizedException('Cuenta desactivada');
     }
+    if (!user.password) {
+      throw new UnauthorizedException(
+        'Esta cuenta usa Google. Inicia sesión con Google.',
+      );
+    }
     const match = await bcrypt.compare(dto.password, user.password);
     if (!match) {
       throw new UnauthorizedException('Credenciales inválidas');

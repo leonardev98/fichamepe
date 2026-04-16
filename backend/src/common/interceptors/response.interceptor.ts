@@ -4,6 +4,7 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -16,15 +17,23 @@ type WrappedSuccess<T> = {
 @Injectable()
 export class TransformInterceptor implements NestInterceptor {
   intercept(
-    _context: ExecutionContext,
+    context: ExecutionContext,
     next: CallHandler,
   ): Observable<WrappedSuccess<unknown>> {
     return next.handle().pipe(
-      map((data) => ({
-        success: true as const,
-        data,
-        timestamp: new Date().toISOString(),
-      })),
+      map((data) => {
+        if (context.getType() === 'http') {
+          const res = context.switchToHttp().getResponse<Response>();
+          if (res.headersSent) {
+            return data as WrappedSuccess<unknown>;
+          }
+        }
+        return {
+          success: true as const,
+          data,
+          timestamp: new Date().toISOString(),
+        };
+      }),
     );
   }
 }

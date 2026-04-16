@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -18,6 +18,10 @@ import { resolvePostLoginHref } from "@/lib/post-login-redirect";
 import { useAuthModals } from "@/components/auth/auth-modals-context";
 import { GoogleMark } from "@/components/auth/GoogleMark";
 import { useAuthStore } from "@/store/auth.store";
+import {
+  buildGoogleOAuthStartUrl,
+  GOOGLE_OAUTH_MISSING_API_URL_MESSAGE,
+} from "@/lib/google-oauth";
 
 const loginSchema = z.object({
   email: z.string().min(1, "El correo es obligatorio").email("Correo inválido"),
@@ -38,6 +42,14 @@ export function LoginModal({ state }: LoginModalProps) {
   const setAccessToken = useAuthStore((s) => s.setAccessToken);
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const googleOAuthHref = useMemo(() => {
+    const from = searchParams.get("from");
+    return buildGoogleOAuthStartUrl({
+      from:
+        typeof from === "string" && from.startsWith("/") ? from : "/",
+    });
+  }, [searchParams]);
 
   const {
     register,
@@ -215,19 +227,26 @@ export function LoginModal({ state }: LoginModalProps) {
                 </div>
               </div>
 
-              <Button
-                type="button"
-                variant="secondary"
-                className="h-12 w-full rounded-full border border-[#E5E7EB] bg-[#F9FAFB] text-[15px] font-medium text-[#1A1A2E] hover:bg-[#F3F4F6]"
-                onPress={() => {
-                  /* Mock: integración Google pendiente */
-                }}
-              >
-                <span className="flex w-full items-center justify-center gap-3">
-                  <GoogleMark className="size-5 shrink-0" />
+              {googleOAuthHref ? (
+                <a
+                  href={googleOAuthHref}
+                  className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-[15px] font-medium text-[#1A1A2E] no-underline hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6C63FF]/35"
+                >
+                  <GoogleMark className="size-5 shrink-0" aria-hidden />
                   Continuar con Google
-                </span>
-              </Button>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className="inline-flex h-12 w-full cursor-not-allowed items-center justify-center gap-3 rounded-full border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-[15px] font-medium text-[#9CA3AF]"
+                  onClick={() =>
+                    window.alert(GOOGLE_OAUTH_MISSING_API_URL_MESSAGE)
+                  }
+                >
+                  <GoogleMark className="size-5 shrink-0 opacity-60" aria-hidden />
+                  Continuar con Google
+                </button>
+              )}
 
               <p className="mt-5 text-center text-sm text-[#6B7280] sm:mt-6 sm:text-[15px]">
                 ¿Eres nuevo?{" "}

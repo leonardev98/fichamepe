@@ -2,10 +2,14 @@ import type { User, UserRole } from '../entities';
 
 export interface CreateUserData {
   email: string;
-  passwordHash: string;
+  /** Null = cuenta solo Google (sin contraseña local). */
+  passwordHash?: string | null;
+  googleId?: string | null;
   fullName?: string | null;
   role?: UserRole;
   referredByUserId?: string | null;
+  /** Si true, marca el correo como verificado al crear (p. ej. OAuth Google). */
+  markEmailVerified?: boolean;
 }
 
 export type UserUpdatePatch = Partial<
@@ -18,11 +22,13 @@ export type UserUpdatePatch = Partial<
     | 'proExpiresAt'
     | 'tokenBalance'
     | 'role'
+    | 'googleId'
   >
 >;
 
 export interface IUserRepository {
   findByEmail(email: string): Promise<User | null>;
+  findByGoogleId(googleId: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   findByReferralCode(code: string): Promise<User | null>;
   countUsersReferredBy(referrerUserId: string): Promise<number>;

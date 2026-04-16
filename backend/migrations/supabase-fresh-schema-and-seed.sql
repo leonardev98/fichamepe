@@ -27,7 +27,8 @@ CREATE TABLE "user" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
   "email" character varying NOT NULL,
   "fullName" character varying,
-  "password" character varying NOT NULL,
+  "password" character varying,
+  "googleId" character varying,
   "role" character varying(32) NOT NULL DEFAULT 'freelancer',
   "isActive" boolean NOT NULL DEFAULT true,
   "isPro" boolean NOT NULL DEFAULT false,
@@ -48,6 +49,7 @@ CREATE TABLE "user" (
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
   CONSTRAINT "PK_user" PRIMARY KEY ("id"),
   CONSTRAINT "UQ_user_email" UNIQUE ("email"),
+  CONSTRAINT "UQ_user_googleId" UNIQUE ("googleId"),
   CONSTRAINT "UQ_user_referralCode" UNIQUE ("referralCode"),
   CONSTRAINT "FK_user_referredByUser" FOREIGN KEY ("referredByUserId") REFERENCES "user"("id") ON DELETE SET NULL
 );
