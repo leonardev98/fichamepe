@@ -1,0 +1,12 @@
+# Config as code para el servicio que usa Root Directory = backend.
+# En Railway → Settings del servicio → "Config as code": ruta /backend/railway.toml
+# (si no enlazás este archivo, igual podés borrar el "Custom build command" en la UI).
+[build]
+builder = "RAILPACK"
+# Solo compilar: las deps ya las instala Railpack. NO uses npm ci aquí.
+buildCommand = "npm run build"
+
+[deploy]
+# No usar `npm run start:prod`: en runtime a veces el cwd es la raíz del monorepo
+# y ese package.json no define start:prod. Nest emite dist/main.js.
+startCommand = "node dist/main.js"

@@ -409,3 +409,9 @@
 {"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/auth/login"},"timestamp":1776310855264}
 {"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/auth/login"},"timestamp":1776310896563}
 {"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/dashboard/revision"},"timestamp":1776311888272}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776313393317}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776313398318}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H4","location":"src/components/mobile/BottomSheet.tsx:BottomSheet.useEffect","message":"bottomsheet-mounted","data":{"triggerLabel":"Filtros","isOpen":false,"path":"/explorar"},"timestamp":1776313416302}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H4","location":"src/components/mobile/BottomSheet.tsx:BottomSheet.useEffect","message":"bottomsheet-mounted","data":{"triggerLabel":"Filtros","isOpen":false,"path":"/explorar"},"timestamp":1776313430153}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776313433283}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776313597288}
