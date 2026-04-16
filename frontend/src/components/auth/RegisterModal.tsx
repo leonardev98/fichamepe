@@ -52,6 +52,9 @@ export function RegisterModal({
 }: RegisterModalProps) {
   const router = useRouter();
   const loginStore = useAuthStore((s) => s.login);
+  const triggerPendingEmailVerificationToast = useAuthStore(
+    (s) => s.triggerPendingEmailVerificationToast,
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -118,9 +121,7 @@ export function RegisterModal({
         void useFavoritesStore.getState().syncFromApi();
       });
       if (res.user.emailVerified === false) {
-        window.alert(
-          "Te enviamos un correo con un enlace para verificar tu cuenta. Cuando lo confirmes podrás publicar y conversar.",
-        );
+        triggerPendingEmailVerificationToast();
       }
       reset();
       state.close();

@@ -8,6 +8,7 @@ import { AuthGuard } from '@nestjs/passport';
 import type { Request } from 'express';
 import { encodeGoogleOAuthState } from '../utils/google-oauth-state';
 import { isGoogleOAuthConfigured } from '../utils/google-oauth-env';
+import { isOAuthReturnOriginAllowed } from '../utils/oauth-frontend-base-url';
 
 @Injectable()
 export class GoogleOAuthStartGuard extends AuthGuard('google') {
@@ -28,15 +29,18 @@ export class GoogleOAuthStartGuard extends AuthGuard('google') {
     const req = context.switchToHttp().getRequest<Request>();
     const rawFrom = req.query['from'];
     const from =
-      typeof rawFrom === 'string' && rawFrom.startsWith('/')
-        ? rawFrom
-        : '/';
+      typeof rawFrom === 'string' && rawFrom.startsWith('/') ? rawFrom : '/';
     const rawRef = req.query['referral'];
     const referral =
       typeof rawRef === 'string' ? rawRef.trim().toUpperCase() : '';
     const rawRole = req.query['role'];
     const role =
       rawRole === 'client' || rawRole === 'freelancer' ? rawRole : undefined;
+    const originHeader =
+      typeof req.headers.origin === 'string' ? req.headers.origin.trim() : '';
+    const returnOrigin = isOAuthReturnOriginAllowed(this.config, originHeader)
+      ? originHeader
+      : undefined;
     return {
       scope: ['email', 'profile'],
       session: false,
@@ -44,6 +48,7 @@ export class GoogleOAuthStartGuard extends AuthGuard('google') {
         from,
         ...(referral ? { referral } : {}),
         ...(role ? { role } : {}),
+        ...(returnOrigin ? { returnOrigin } : {}),
       }),
     };
   }

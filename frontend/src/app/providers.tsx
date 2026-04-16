@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RouterProvider } from "react-aria-components";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
+import { PendingEmailVerificationToast } from "@/components/auth/PendingEmailVerificationToast";
 import { AuthModalsProvider } from "@/components/auth/auth-modals-provider";
 import { SessionBootstrap } from "@/components/SessionBootstrap";
 import { ChatSocketProvider } from "@/components/conversaciones/ChatSocketProvider";
@@ -155,6 +156,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <HeroUIProvider>
       <EmailVerificationBanner />
+      <PendingEmailVerificationToast />
       <SessionBootstrap />
       <ChatSocketProvider />
       <ServiceWorkerRegister />

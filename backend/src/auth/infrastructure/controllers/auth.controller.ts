@@ -34,12 +34,22 @@ import type { RequestUser } from '../../domain/services/auth-token.service.inter
 import { extractRefreshTokenFromRequest } from '../utils/refresh-token.extractor';
 import { AuthCookieService } from '../services/auth-cookie.service';
 import { AuthAuditService } from '../services/auth-audit.service';
-import { getRequestIp, getRequestUserAgent } from '../../../common/utils/request-metadata';
+import {
+  getRequestIp,
+  getRequestUserAgent,
+} from '../../../common/utils/request-metadata';
 import { GoogleOAuthStartGuard } from '../guards/google-oauth-start.guard';
 import { GoogleOAuthCallbackGuard } from '../guards/google-oauth-callback.guard';
 import type { GoogleOAuthProfilePayload } from '../strategies/google.strategy';
-import { decodeGoogleOAuthState } from '../utils/google-oauth-state';
-import { AuthenticateWithGoogleUseCase } from '../../application/use-cases/authenticate-with-google.use-case';
+import {
+  decodeGoogleOAuthState,
+  type GoogleOAuthStatePayload,
+} from '../utils/google-oauth-state';
+import { resolveOAuthFrontendBaseUrl } from '../utils/oauth-frontend-base-url';
+import {
+  AuthenticateWithGoogleUseCase,
+  type AuthenticateWithGoogleResult,
+} from '../../application/use-cases/authenticate-with-google.use-case';
 
 @Controller('auth')
 export class AuthController {
@@ -73,23 +83,21 @@ export class AuthController {
     const profile = req.user as GoogleOAuthProfilePayload;
     const rawState =
       typeof req.query['state'] === 'string' ? req.query['state'] : '';
-    const fe = (
-      this.config.get<string>('FRONTEND_URL')?.trim() ||
-      'http://localhost:3000'
-    ).replace(/\/$/, '');
+    const feDefault = resolveOAuthFrontendBaseUrl(this.config, undefined);
     const loginWithGoogleError = () => {
-      const login = new URL('/auth/login', `${fe}/`);
+      const login = new URL('/auth/login', `${feDefault}/`);
       login.searchParams.set('error', 'google');
       res.redirect(302, login.toString());
     };
-    let state;
+    let state: GoogleOAuthStatePayload;
     try {
       state = decodeGoogleOAuthState(rawState);
     } catch {
       loginWithGoogleError();
       return;
     }
-    let tokens;
+    const fe = resolveOAuthFrontendBaseUrl(this.config, state.returnOrigin);
+    let tokens: AuthenticateWithGoogleResult;
     try {
       tokens = await this.authenticateWithGoogle.execute({
         googleId: profile.googleId,

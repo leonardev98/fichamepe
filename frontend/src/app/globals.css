@@ -87,3 +87,29 @@ h6 {
     radial-gradient(circle at 100% 0%, rgba(245, 158, 11, 0.1), transparent 36%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(247, 244, 255, 0.92));
 }
+
+@keyframes fp-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes fp-toast-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+.fp-toast-in {
+  animation: fp-toast-in 0.35s ease-out;
+}

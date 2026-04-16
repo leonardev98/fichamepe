@@ -5,6 +5,11 @@ export type GoogleOAuthStatePayload = {
   from: string;
   referral?: string;
   role?: 'client' | 'freelancer';
+  /**
+   * Origen del front desde el que se inició OAuth (`Origin` del GET /auth/google),
+   * solo si estaba en la lista permitida (FRONTEND_URL / CORS_ORIGIN explícito).
+   */
+  returnOrigin?: string;
 };
 
 const STATE_VERSION = 1;
@@ -14,6 +19,8 @@ type EncodedState = {
   from: string;
   referral?: string;
   role?: 'client' | 'freelancer';
+  /** Origen permitido (scheme://host[:port]) */
+  o?: string;
 };
 
 export function encodeGoogleOAuthState(
@@ -23,6 +30,7 @@ export function encodeGoogleOAuthState(
     payload.from?.startsWith('/') && !payload.from.startsWith('//')
       ? payload.from.slice(0, 512)
       : '/';
+  const ro = payload.returnOrigin?.trim();
   const body: EncodedState = {
     v: STATE_VERSION,
     from,
@@ -30,6 +38,7 @@ export function encodeGoogleOAuthState(
       ? { referral: payload.referral.trim().toUpperCase().slice(0, 16) }
       : {}),
     ...(payload.role ? { role: payload.role } : {}),
+    ...(ro && ro.length <= 200 ? { o: ro } : {}),
   };
   return Buffer.from(JSON.stringify(body), 'utf8').toString('base64url');
 }
@@ -61,12 +70,19 @@ export function decodeGoogleOAuthState(raw: string): GoogleOAuthStatePayload {
       ? o.from.slice(0, 512)
       : '/';
   const referral =
-    typeof o.referral === 'string' ? o.referral.trim().toUpperCase() : undefined;
+    typeof o.referral === 'string'
+      ? o.referral.trim().toUpperCase()
+      : undefined;
   const role =
     o.role === 'client' || o.role === 'freelancer' ? o.role : undefined;
+  const returnOrigin =
+    typeof o.o === 'string' && o.o.trim().length > 0 && o.o.length <= 200
+      ? o.o.trim()
+      : undefined;
   return {
     from,
     ...(referral ? { referral } : {}),
     ...(role ? { role } : {}),
+    ...(returnOrigin ? { returnOrigin } : {}),
   };
 }

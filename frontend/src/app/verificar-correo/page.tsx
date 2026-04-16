@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 import {
   fetchAuthMe,
   parseApiErrorMessage,
@@ -20,8 +21,10 @@ function VerificarCorreoContent() {
   useEffect(() => {
     const raw = searchParams.get("token")?.trim();
     if (!raw) {
-      setStatus("err");
-      setMessage("Este enlace no es válido o está incompleto.");
+      queueMicrotask(() => {
+        setStatus("err");
+        setMessage("Este enlace no es válido o está incompleto.");
+      });
       return;
     }
     let cancelled = false;
@@ -52,17 +55,26 @@ function VerificarCorreoContent() {
 
   return (
     <div className="mx-auto flex min-h-[50vh] max-w-lg flex-col items-center justify-center px-4 py-16 text-center">
-      <h1 className="text-2xl font-bold tracking-tight text-foreground">Verificar correo</h1>
+      <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+        Verificar correo
+      </h1>
       {status === "loading" ? (
         <p className="mt-4 text-muted">Comprobando enlace…</p>
       ) : null}
       {status === "ok" ? (
-        <p className="mt-4 text-foreground" role="status">
-          {message}
-        </p>
+        <div
+          className="mt-8 flex w-full flex-col items-center gap-3 rounded-2xl border border-success/25 bg-success/5 px-6 py-8"
+          role="status"
+        >
+          <span className="flex size-14 items-center justify-center rounded-full bg-success/15 text-success">
+            <CheckCircle2 className="size-8" strokeWidth={2} aria-hidden />
+          </span>
+          <p className="font-heading text-lg font-semibold text-foreground">Correo verificado</p>
+          <p className="max-w-sm text-sm leading-relaxed text-muted">{message}</p>
+        </div>
       ) : null}
       {status === "err" ? (
-        <p className="mt-4 text-accent-red" role="alert">
+        <p className="mt-6 text-accent-red" role="alert">
           {message}
         </p>
       ) : null}
@@ -70,7 +82,7 @@ function VerificarCorreoContent() {
         href="/"
         className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-white transition hover:opacity-95"
       >
-        Volver al inicio
+        Ir al inicio
       </Link>
     </div>
   );
