@@ -16,6 +16,10 @@ import {
 export const SITE_LOGO_URL =
   "https://fichamepe-assets-prod.s3.us-east-2.amazonaws.com/logo-fichamepe.png";
 
+/** Favicon / icono de pestaña (SVG en S3). */
+export const SITE_FAVICON_SVG_URL =
+  "https://fichamepe-assets-prod.s3.us-east-2.amazonaws.com/logo+peque%C3%B1o.svg";
+
 /** Frases cortas de marca (reutilizar en hero, secciones, footer, etc.). */
 export const SITE_TAGLINES = [
   "Nunca verás lo mismo dos veces.",

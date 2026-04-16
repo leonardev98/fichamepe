@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { SITE_FAVICON_SVG_URL } from "@/lib/constants";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -25,6 +26,9 @@ export const metadata: Metadata = {
   title: "fichame.pe — Talento freelance en Lima",
   description:
     "Marketplace de talento freelance en Lima. Explora perfiles, filtra por distrito y conecta con los mejores profesionales.",
+  icons: {
+    icon: [{ url: SITE_FAVICON_SVG_URL, type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
