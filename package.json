@@ -1,7 +1,13 @@
 {
   "name": "fichamepe",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": "20"
+  },
+  "scripts": {
+    "preinstall": "node -e \"process.exit(0)\"",
+    "build": "pnpm --filter backend run build",
+    "start": "pnpm --filter backend run start:prod"
   }
 }
