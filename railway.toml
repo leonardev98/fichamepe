@@ -1,0 +1,21 @@
+# Configuración del servicio de API (Nest) en Railway.
+# En el panel del servicio: Source → Root Directory = / (raíz del repo, no "backend").
+#
+# Segundo servicio (Next.js): mismo repo, Root Directory = /, y en Settings → Build / Deploy:
+#   Build command:  pnpm install --frozen-lockfile && pnpm --filter frontend run build
+#   Start command:  pnpm --filter frontend run start
+# Variables del servicio front: NEXT_PUBLIC_API_URL=https://<URL-pública-de-este-API>
+#
+# watchPatterns: evita despliegues "Skipped" cuando solo cambia código que no afecta al API.
+
+[build]
+builder = "NIXPACKS"
+watchPatterns = [
+  "backend/**",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+]
+
+[deploy]
+startCommand = "pnpm run start"

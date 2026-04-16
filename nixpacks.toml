@@ -1,10 +1,3 @@
-# Railway / Nixpacks: monorepo pnpm (solo pnpm-lock.yaml en la raíz, sin package-lock.json).
-# Fija install + build para que Nixpacks no ejecute `npm ci` en la fase build.
-[phases.install]
-cmds = ["pnpm install --frozen-lockfile --prefer-offline"]
-
-[phases.build]
-cmds = ["pnpm run build"]
-
-[start]
-cmd = "pnpm run start"
+# https://nixpacks.com/docs/configuration/file
+[variables]
+NIXPACKS_NODE_VERSION = "20"

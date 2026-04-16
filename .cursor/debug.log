@@ -424,3 +424,7 @@
 {"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776315333874}
 {"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776315425050}
 {"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/dashboard/revision"},"timestamp":1776315752513}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/auth/login"},"timestamp":1776316137213}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776316143713}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776316147718}
+{"sessionId":"943a62","runId":"run-1","hypothesisId":"H5","location":"src/app/providers.tsx:Providers.useEffect(init)","message":"providers-mounted","data":{"pathname":"/"},"timestamp":1776316165095}
