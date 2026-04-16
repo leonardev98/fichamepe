@@ -9,8 +9,13 @@ type AuthState = {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** True tras el primer intento de `SessionBootstrap` (éxito o no). Rutas protegidas en cliente lo esperan. */
+  authBootstrapComplete: boolean;
   login: (accessToken: string, user: AuthUser) => void;
   setAccessToken: (accessToken: string) => void;
+  setAuthBootstrapComplete: (complete: boolean) => void;
+  /** Solo estado local (p. ej. bootstrap fallido); no llama al API ni borra cookies httpOnly. */
+  clearClientSession: () => void;
   logout: () => void;
   setUser: (user: AuthUser) => void;
   setLoading: (isLoading: boolean) => void;
@@ -21,6 +26,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   isAuthenticated: false,
   isLoading: false,
+  authBootstrapComplete: false,
+  setAuthBootstrapComplete: (complete) => set({ authBootstrapComplete: complete }),
   login: (accessToken, user) => {
     set({
       accessToken,
@@ -47,12 +54,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   setAccessToken: (accessToken) =>
     set({ accessToken, isAuthenticated: !!accessToken }),
+  clearClientSession: () => {
+    const hadSession = get().isAuthenticated || !!get().accessToken;
+    set({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+    });
+    if (hadSession) {
+      void import("@/stores/favoritesStore").then(({ useFavoritesStore }) => {
+        useFavoritesStore.getState().reset();
+      });
+      void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
+        useConversationsStore.getState().reset();
+      });
+    }
+  },
   logout: () => {
     const hadSession = get().isAuthenticated || !!get().accessToken;
     set({
       user: null,
       accessToken: null,
       isAuthenticated: false,
+      authBootstrapComplete: true,
     });
     if (hadSession) {
       void import("@/stores/favoritesStore").then(({ useFavoritesStore }) => {

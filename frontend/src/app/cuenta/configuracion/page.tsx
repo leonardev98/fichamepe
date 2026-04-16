@@ -72,7 +72,7 @@ export default function CuentaConfiguracionPage() {
       <div>
         <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">Configuración</h2>
         <p className="mt-1 text-sm text-muted">
-          Seguridad de la cuenta y opciones sensibles. Los cambios aquí afectan todo tu acceso a fícháme.pe.
+          Seguridad de la cuenta y opciones sensibles. Los cambios aquí afectan todo tu acceso a fichame.pe.
         </p>
       </div>
 

@@ -143,7 +143,7 @@ export function RegisterModal({
                 Crea tu cuenta
               </Modal.Heading>
               <p className="mx-auto mt-2 max-w-[min(100%,380px)] text-sm leading-snug text-[#6B7280] sm:text-[15px]">
-                Completa tus datos para empezar en fícháme.pe.
+                Completa tus datos para empezar en fichame.pe.
               </p>
             </Modal.Header>
 
@@ -221,7 +221,7 @@ export function RegisterModal({
                     </FieldError>
                   ) : null}
                   <p className="text-xs leading-snug text-[#9CA3AF]">
-                    Si alguien te invitó a fícháme.pe, pega su código aquí. Así le regalas un cupo
+                    Si alguien te invitó a fichame.pe, pega su código aquí. Así le regalas un cupo
                     extra de publicaciones.
                   </p>
                 </div>

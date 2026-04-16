@@ -22,7 +22,7 @@ const monoFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "fícháme.pe — Talento freelance en Lima",
+  title: "fichame.pe — Talento freelance en Lima",
   description:
     "Marketplace de talento freelance en Lima. Explora perfiles, filtra por distrito y conecta con los mejores profesionales.",
 };

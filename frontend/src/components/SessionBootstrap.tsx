@@ -9,6 +9,9 @@ export function SessionBootstrap() {
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
+    const markBootstrapDone = () =>
+      useAuthStore.getState().setAuthBootstrapComplete(true);
+
     if (useAuthStore.getState().accessToken) {
       void import("@/stores/favoritesStore").then(({ useFavoritesStore }) => {
         void useFavoritesStore.getState().syncFromApi();
@@ -16,20 +19,25 @@ export function SessionBootstrap() {
       void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
         void useConversationsStore.getState().syncFromApi();
       });
+      markBootstrapDone();
       return;
     }
-    void bootstrapSessionFromCookies().then((ok) => {
-      if (!ok) {
-        useAuthStore.getState().logout();
-        return;
-      }
-      void import("@/stores/favoritesStore").then(({ useFavoritesStore }) => {
-        void useFavoritesStore.getState().syncFromApi();
-      });
-      void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
-        void useConversationsStore.getState().syncFromApi();
-      });
-    });
+    void bootstrapSessionFromCookies()
+      .then((ok) => {
+        if (!ok) {
+          // No usar `logout()`: haría POST /auth/logout y podría borrar cookies válidas si el fallo
+          // fue distinto a "sin sesión" (p. ej. /auth/me temporal tras un refresh OK).
+          useAuthStore.getState().clearClientSession();
+          return;
+        }
+        void import("@/stores/favoritesStore").then(({ useFavoritesStore }) => {
+          void useFavoritesStore.getState().syncFromApi();
+        });
+        void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
+          void useConversationsStore.getState().syncFromApi();
+        });
+      })
+      .finally(markBootstrapDone);
   }, []);
   return null;
 }

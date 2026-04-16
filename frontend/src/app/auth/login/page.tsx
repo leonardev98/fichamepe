@@ -76,7 +76,7 @@ function LoginPageContent() {
           className="mb-8 flex flex-col items-center gap-1 text-center no-underline"
         >
           <span className="text-2xl font-semibold tracking-tight">
-            <span className="text-primary">fícháme</span>
+            <span className="text-primary">fichame</span>
             <span className="text-accent">.pe</span>
           </span>
           <span className="text-sm text-muted">Inicia sesión en tu cuenta</span>

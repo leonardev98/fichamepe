@@ -48,7 +48,7 @@ export function Footer() {
             <ul className="flex flex-col gap-2.5">
               <li>
                 <Link href="/para-freelancers" className={linkClass}>
-                  Vender en fícháme
+                  Vender en fichame
                 </Link>
               </li>
               <li>
@@ -67,7 +67,7 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <p className="mb-4 text-sm font-semibold text-white">fícháme.pe</p>
+            <p className="mb-4 text-sm font-semibold text-white">fichame.pe</p>
             <ul className="flex flex-col gap-2.5">
               <li>
                 <Link href="/sobre-nosotros" className={linkClass}>
