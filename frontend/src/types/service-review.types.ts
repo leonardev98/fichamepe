@@ -1,6 +1,6 @@
 export type ServiceReviewPublic = {
   id: string;
-  maskedAuthorName: string;
+  authorName: string;
   avatarUrl: string | null;
   rating: number;
   ratingLabel: string;

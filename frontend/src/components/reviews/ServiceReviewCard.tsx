@@ -61,15 +61,15 @@ export function ServiceReviewCard({ review }: { review: ServiceReviewPublic }) {
           ) : (
             <span
               className="flex h-full w-full items-center justify-center text-sm font-bold text-white"
-              style={{ backgroundColor: avatarHue(review.maskedAuthorName) }}
+              style={{ backgroundColor: avatarHue(review.authorName) }}
             >
-              {initialLetter(review.maskedAuthorName)}
+              {initialLetter(review.authorName)}
             </span>
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-            <span className="font-semibold text-foreground">{review.maskedAuthorName}</span>
+            <span className="font-semibold text-foreground">{review.authorName}</span>
             <span className="text-muted">en 🇵🇪 Perú</span>
             {dateStr ? <span className="text-muted">{dateStr}</span> : null}
             {review.isVerifiedPurchase ? (

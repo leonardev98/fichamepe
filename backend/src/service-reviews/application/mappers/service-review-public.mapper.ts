@@ -1,11 +1,10 @@
 import type { ProfileOrmEntity } from '../../../profiles/infrastructure/persistence/entities/profile.orm-entity';
 import type { ServiceReviewOrmEntity } from '../../infrastructure/persistence/entities/service-review.orm-entity';
 import { ratingLabelEs } from '../../infrastructure/utils/rating-label';
-import { maskDisplayName } from '../../infrastructure/utils/mask-display-name';
 
 export type ServiceReviewPublicDto = {
   id: string;
-  maskedAuthorName: string;
+  authorName: string;
   avatarUrl: string | null;
   rating: number;
   ratingLabel: string;
@@ -27,9 +26,10 @@ export function toServiceReviewPublicDto(input: {
   serviceId: string;
   serviceTitle: string;
 }): ServiceReviewPublicDto {
+  const authorName = input.displayNameOrFullName.trim() || 'Usuario';
   return {
     id: input.id,
-    maskedAuthorName: maskDisplayName(input.displayNameOrFullName),
+    authorName,
     avatarUrl: input.avatarUrl,
     rating: input.rating,
     ratingLabel: ratingLabelEs(input.rating),
