@@ -1,7 +1,9 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IUserRepository } from '../../../users/domain/repositories';
+import { UserRole } from '../../../users/domain/entities/user';
 import { USER_REPOSITORY } from '../../../users/users.di-tokens';
+import { freelancerDefaultDisplayName } from '../../../profiles/application/utils/freelancer-default-display-name';
 import type { IProfileRepository } from '../../../profiles/domain/repositories/profile.repository.interface';
 import { PROFILE_REPOSITORY } from '../../../profiles/profiles.di-tokens';
 import type { IServiceRepository } from '../../domain/repositories/i-service.repository';
@@ -35,15 +37,21 @@ export class CreateServiceUseCase {
     userId: string,
     dto: CreateServiceBodyDto,
   ): Promise<ServiceResponse> {
-    const profile = await this.profiles.findByUserId(userId);
-    if (!profile) {
-      throw new BadRequestException(
-        'Necesitas un perfil publicado antes de crear un servicio',
-      );
-    }
     const user = await this.users.findById(userId);
     if (!user) {
       throw new BadRequestException('Usuario no encontrado');
+    }
+    let profile = await this.profiles.findByUserId(userId);
+    if (!profile) {
+      if (user.role !== UserRole.Freelancer) {
+        throw new BadRequestException(
+          'Solo los perfiles de freelancer pueden crear servicios. Completa tu registro como freelancer o contacta soporte.',
+        );
+      }
+      profile = await this.profiles.create({
+        userId,
+        displayName: freelancerDefaultDisplayName(user.fullName, user.email),
+      });
     }
     const count = await this.services.countByProfileId(profile.id);
     const exemptEmails = parseReferralPublishExemptEmails(

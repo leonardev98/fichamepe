@@ -7,6 +7,9 @@ import {
 import type { IUserRepository } from '../../../users/domain/repositories';
 import { UserRole } from '../../../users/domain/entities/user';
 import { USER_REPOSITORY } from '../../../users/users.di-tokens';
+import type { IProfileRepository } from '../../../profiles/domain/repositories/profile.repository.interface';
+import { PROFILE_REPOSITORY } from '../../../profiles/profiles.di-tokens';
+import { freelancerDefaultDisplayName } from '../../../profiles/application/utils/freelancer-default-display-name';
 import type {
   AuthTokens,
   IAuthTokenService,
@@ -35,6 +38,8 @@ export class AuthenticateWithGoogleUseCase {
     private readonly users: IUserRepository,
     @Inject(AUTH_TOKEN_SERVICE)
     private readonly tokens: IAuthTokenService,
+    @Inject(PROFILE_REPOSITORY)
+    private readonly profiles: IProfileRepository,
   ) {}
 
   async execute(
@@ -105,6 +110,12 @@ export class AuthenticateWithGoogleUseCase {
           referredByUserId,
           REFERRAL_PUBLICATION_BONUS_CAP,
         );
+      }
+      if (user.role === UserRole.Freelancer) {
+        await this.profiles.create({
+          userId: user.id,
+          displayName: freelancerDefaultDisplayName(user.fullName, user.email),
+        });
       }
     }
 

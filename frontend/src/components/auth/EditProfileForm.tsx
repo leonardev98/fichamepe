@@ -117,18 +117,23 @@ export function EditProfileForm() {
         });
       }
 
-      if (publicUrl) {
-        try {
-          await patchProfileByUserId(user.id, { avatarUrl: publicUrl });
-        } catch (err) {
-          if (isNotFoundError(err)) {
-            await postProfile({
-              displayName: displayNameFromForm(fullName, email),
-              avatarUrl: publicUrl,
-            });
-          } else {
-            throw err;
-          }
+      const displayName = displayNameFromForm(fullName, email);
+      const profilePatch: { displayName: string; avatarUrl?: string | null } = {
+        displayName,
+      };
+      if (publicUrl !== undefined) {
+        profilePatch.avatarUrl = publicUrl;
+      }
+      try {
+        await patchProfileByUserId(user.id, profilePatch);
+      } catch (err) {
+        if (isNotFoundError(err)) {
+          await postProfile({
+            displayName,
+            ...(publicUrl !== undefined ? { avatarUrl: publicUrl } : {}),
+          });
+        } else {
+          throw err;
         }
       }
 
