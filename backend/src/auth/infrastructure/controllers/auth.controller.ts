@@ -35,6 +35,7 @@ import { extractRefreshTokenFromRequest } from '../utils/refresh-token.extractor
 import { AuthCookieService } from '../services/auth-cookie.service';
 import { AuthAuditService } from '../services/auth-audit.service';
 import {
+  getRequestCountryCode,
   getRequestIp,
   getRequestUserAgent,
 } from '../../../common/utils/request-metadata';
@@ -98,11 +99,13 @@ export class AuthController {
     }
     const fe = resolveOAuthFrontendBaseUrl(this.config, state.returnOrigin);
     let tokens: AuthenticateWithGoogleResult;
+    const countryCode = getRequestCountryCode(req);
     try {
       tokens = await this.authenticateWithGoogle.execute({
         googleId: profile.googleId,
         email: profile.email,
         fullName: profile.fullName,
+        countryCode,
         state,
       });
     } catch (e) {
@@ -135,8 +138,11 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { refreshToken, accessToken, user } =
-      await this.registerUser.execute(dto);
+    const countryCode = getRequestCountryCode(req);
+    const { refreshToken, accessToken, user } = await this.registerUser.execute(
+      dto,
+      { countryCode },
+    );
     this.authCookies.setAuthCookies(res, refreshToken, user.role);
     await this.authAudit.recordLoginEvent({
       userId: user.id,

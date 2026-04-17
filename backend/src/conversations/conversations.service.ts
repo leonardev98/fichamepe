@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { ClientRequestOrmEntity } from '../client-requests/infrastructure/persistence/entities/client-request.orm';
 import { ProfileOrmEntity } from '../profiles/infrastructure/persistence/entities/profile.orm-entity';
 import { ServiceOrmEntity } from '../services/infrastructure/persistence/entities/service.orm';
 import { UserOrmEntity } from '../users/infrastructure/persistence/entities/user.orm-entity';
@@ -26,7 +27,9 @@ export type ConversationMessageApi = {
 
 export type ConversationThreadApi = {
   id: string;
-  serviceId: string;
+  threadKind: 'service' | 'client_request';
+  serviceId: string | null;
+  clientRequestId: string | null;
   sellerUserId: string;
   buyerUserId: string;
   participant: {
@@ -52,6 +55,8 @@ export class ConversationsService {
     private readonly conversationRepo: Repository<ConversationOrmEntity>,
     @InjectRepository(ConversationMessageOrmEntity)
     private readonly messageRepo: Repository<ConversationMessageOrmEntity>,
+    @InjectRepository(ClientRequestOrmEntity)
+    private readonly clientRequestRepo: Repository<ClientRequestOrmEntity>,
     @InjectRepository(ServiceOrmEntity)
     private readonly serviceRepo: Repository<ServiceOrmEntity>,
     @InjectRepository(ProfileOrmEntity)
@@ -102,6 +107,7 @@ export class ConversationsService {
     if (!thread) {
       thread = this.conversationRepo.create({
         serviceId,
+        clientRequestId: null,
         sellerUserId,
         buyerUserId,
       });
@@ -114,6 +120,66 @@ export class ConversationsService {
       throw new NotFoundException('No se pudo crear la conversación');
     }
     return first;
+  }
+
+  async createOrGetThreadForClientRequest(
+    buyerUserId: string,
+    clientRequestId: string,
+  ): Promise<ConversationThreadApi> {
+    const buyer = await this.users.findById(buyerUserId);
+    if (!buyer) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    assertUserEmailVerified(buyer);
+    const request = await this.clientRequestRepo.findOne({ where: { id: clientRequestId } });
+    if (!request) {
+      throw new NotFoundException('Solicitud no encontrada');
+    }
+    if (request.status !== 'OPEN') {
+      throw new BadRequestException('La solicitud no está abierta.');
+    }
+    const sellerUserId = request.userId;
+    if (sellerUserId === buyerUserId) {
+      throw new BadRequestException('No puedes conversar contigo mismo.');
+    }
+
+    let thread = await this.conversationRepo.findOne({
+      where: { clientRequestId, buyerUserId },
+    });
+    if (!thread) {
+      thread = this.conversationRepo.create({
+        serviceId: null,
+        clientRequestId,
+        sellerUserId,
+        buyerUserId,
+      });
+      await this.conversationRepo.save(thread);
+    }
+
+    const mapped = await this.mapThreadsForUser(buyerUserId, [thread]);
+    const first = mapped[0];
+    if (!first) {
+      throw new NotFoundException('No se pudo crear la conversación');
+    }
+    return first;
+  }
+
+  async createOrGetThreadUnified(
+    buyerUserId: string,
+    dto: { serviceId?: string; clientRequestId?: string },
+  ): Promise<ConversationThreadApi> {
+    const s = dto.serviceId?.trim();
+    const c = dto.clientRequestId?.trim();
+    if (s && c) {
+      throw new BadRequestException('Envía solo serviceId o clientRequestId.');
+    }
+    if (!s && !c) {
+      throw new BadRequestException('Debes enviar serviceId o clientRequestId.');
+    }
+    if (s) {
+      return this.createOrGetThread(buyerUserId, s);
+    }
+    return this.createOrGetThreadForClientRequest(buyerUserId, c!);
   }
 
   async getMessageHistory(
@@ -191,25 +257,39 @@ export class ConversationsService {
     userId: string,
     threads: ConversationOrmEntity[],
   ): Promise<ConversationThreadApi[]> {
-    const serviceIds = [...new Set(threads.map((t) => t.serviceId))];
-    const services = await this.serviceRepo.find({
-      where: { id: In(serviceIds) },
-    });
+    const serviceIds = [
+      ...new Set(threads.map((t) => t.serviceId).filter((id): id is string => !!id)),
+    ];
+    const requestIds = [
+      ...new Set(threads.map((t) => t.clientRequestId).filter((id): id is string => !!id)),
+    ];
+    const services =
+      serviceIds.length > 0
+        ? await this.serviceRepo.find({ where: { id: In(serviceIds) } })
+        : [];
     const serviceMap = new Map(services.map((s) => [s.id, s]));
+
+    const requests =
+      requestIds.length > 0
+        ? await this.clientRequestRepo.find({ where: { id: In(requestIds) } })
+        : [];
+    const requestMap = new Map(requests.map((r) => [r.id, r]));
 
     const otherUserIds = threads.map((t) =>
       t.sellerUserId === userId ? t.buyerUserId : t.sellerUserId,
     );
     const uniqueOtherIds = [...new Set(otherUserIds)];
-    const profiles = await this.profileRepo.find({
-      where: { user: { id: In(uniqueOtherIds) } },
-      relations: ['user'],
-    });
+    const profiles =
+      uniqueOtherIds.length > 0
+        ? await this.profileRepo.find({
+            where: { user: { id: In(uniqueOtherIds) } },
+            relations: ['user'],
+          })
+        : [];
     const profileByUserId = new Map(
       profiles.map((p) => [p.user.id, p] as const),
     );
 
-    /** Siempre por id: evita "Usuario" si hay `profile` pero la relación `user` no vino en la query. */
     const counterpartUsers =
       uniqueOtherIds.length > 0
         ? await this.userRepo.find({
@@ -224,10 +304,6 @@ export class ConversationsService {
     );
 
     return threads.map((t) => {
-      const service = serviceMap.get(t.serviceId);
-      if (!service) {
-        throw new NotFoundException(`Servicio ${t.serviceId} no encontrado`);
-      }
       const otherId = t.sellerUserId === userId ? t.buyerUserId : t.sellerUserId;
       const profile = profileByUserId.get(otherId);
       const otherUser = userById.get(otherId);
@@ -238,26 +314,66 @@ export class ConversationsService {
         : 'Usuario';
       const last = lastByConv.get(t.id);
       const messages: ConversationMessageApi[] = last ? [this.toMessageApi(last)] : [];
-      return {
-        id: t.id,
-        serviceId: t.serviceId,
-        sellerUserId: t.sellerUserId,
-        buyerUserId: t.buyerUserId,
-        participant: {
-          id: otherId,
-          fullName: display,
-          initials: this.initialsFromDisplay(display),
-          avatarUrl: profile?.avatarUrl ?? null,
-        },
-        serviceTitle: service.title,
-        serviceCoverImageUrl: service.coverImageUrl ?? null,
-        servicePrice: service.price,
-        servicePreviousPrice: service.listPrice,
-        serviceCategory: service.category ?? null,
-        serviceDeliveryTime: service.deliveryTime ?? null,
-        unreadCount: 0,
-        messages,
-      };
+
+      if (t.serviceId) {
+        const service = serviceMap.get(t.serviceId);
+        if (!service) {
+          throw new NotFoundException(`Servicio ${t.serviceId} no encontrado`);
+        }
+        return {
+          id: t.id,
+          threadKind: 'service' as const,
+          serviceId: t.serviceId,
+          clientRequestId: null,
+          sellerUserId: t.sellerUserId,
+          buyerUserId: t.buyerUserId,
+          participant: {
+            id: otherId,
+            fullName: display,
+            initials: this.initialsFromDisplay(display),
+            avatarUrl: profile?.avatarUrl ?? null,
+          },
+          serviceTitle: service.title,
+          serviceCoverImageUrl: service.coverImageUrl ?? null,
+          servicePrice: service.price,
+          servicePreviousPrice: service.listPrice,
+          serviceCategory: service.category ?? null,
+          serviceDeliveryTime: service.deliveryTime ?? null,
+          unreadCount: 0,
+          messages,
+        };
+      }
+
+      if (t.clientRequestId) {
+        const cr = requestMap.get(t.clientRequestId);
+        if (!cr) {
+          throw new NotFoundException('Solicitud no encontrada');
+        }
+        return {
+          id: t.id,
+          threadKind: 'client_request' as const,
+          serviceId: null,
+          clientRequestId: t.clientRequestId,
+          sellerUserId: t.sellerUserId,
+          buyerUserId: t.buyerUserId,
+          participant: {
+            id: otherId,
+            fullName: display,
+            initials: this.initialsFromDisplay(display),
+            avatarUrl: profile?.avatarUrl ?? null,
+          },
+          serviceTitle: cr.title,
+          serviceCoverImageUrl: null,
+          servicePrice: null,
+          servicePreviousPrice: null,
+          serviceCategory: null,
+          serviceDeliveryTime: null,
+          unreadCount: 0,
+          messages,
+        };
+      }
+
+      throw new NotFoundException('Conversación inválida');
     });
   }
 

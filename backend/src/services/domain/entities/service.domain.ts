@@ -16,6 +16,7 @@ export class Service {
   promoEndsAt?: Date | null;
   currency: ServiceCurrency;
   coverImageUrl: string | null;
+  isFeatured: boolean;
   status: ServiceStatus;
   /** Compatibilidad temporal para clientes existentes. */
   isActive: boolean;

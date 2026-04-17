@@ -8,6 +8,8 @@ export interface IFindFeedServicesOptions {
   orderBy: FeedOrderBy;
   tags?: string[];
   search?: string;
+  country?: string;
+  featuredOnly?: boolean;
 }
 
 export interface IServiceRepository {
@@ -41,6 +43,11 @@ export interface IServiceRepository {
   countByProfileId(profileId: string): Promise<number>;
 
   countActiveByProfileId(profileId: string): Promise<number>;
+
+  countActiveFeaturedByProfileId(
+    profileId: string,
+    excludingServiceId?: string,
+  ): Promise<number>;
 
   /**
    * IDs ACTIVA ordenados para reconciliación: más antiguas primero (se conservan las primeras `max`).

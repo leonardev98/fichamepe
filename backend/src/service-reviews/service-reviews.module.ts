@@ -10,6 +10,7 @@ import { GetMyServiceReviewUseCase } from './application/use-cases/get-my-servic
 import { ListServiceReviewsUseCase } from './application/use-cases/list-service-reviews.use-case';
 import { ServiceReviewsController } from './infrastructure/controllers/service-reviews.controller';
 import { ServiceReviewOrmEntity } from './infrastructure/persistence/entities/service-review.orm-entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ServiceReviewOrmEntity } from './infrastructure/persistence/entities/se
     ]),
     ServicesModule,
     AuthModule,
+    NotificationsModule,
   ],
   controllers: [ServiceReviewsController],
   providers: [

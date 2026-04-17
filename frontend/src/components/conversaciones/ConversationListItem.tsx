@@ -50,6 +50,11 @@ export function ConversationListItem({
               <p className="truncate text-sm font-semibold text-foreground">
                 {conversation.participant.fullName}
               </p>
+              {conversation.threadKind === "client_request" ? (
+                <span className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  Solicitud
+                </span>
+              ) : null}
               {perspective ? (
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${

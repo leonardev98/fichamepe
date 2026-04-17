@@ -52,7 +52,15 @@ export function perspectiveLabel(p: ConversationPerspective | null): string {
 }
 
 /** Una línea que explica el contexto (lista, dock, cabecera). */
-export function perspectiveContextLine(p: ConversationPerspective | null): string | null {
+export function perspectiveContextLine(
+  p: ConversationPerspective | null,
+  conversation?: ConversationThread | null,
+): string | null {
+  if (conversation?.threadKind === "client_request") {
+    if (p === "buyer") return "Consultaste esta solicitud de trabajo";
+    if (p === "seller") return "Te escribieron por tu solicitud publicada";
+    return null;
+  }
   if (p === "buyer") return "Consultaste el anuncio de esta persona";
   if (p === "seller") return "Te escribieron por tu publicación";
   return null;

@@ -4,6 +4,8 @@ import { MOCK_CONVERSATION_LOCAL_SELLER_ID } from "@/data/mock-conversation-ids"
 export const mockConversations: ConversationThread[] = [
   {
     id: "conv-tech-landing",
+    threadKind: "service",
+    clientRequestId: undefined,
     serviceId: "svc-002",
     sellerUserId: MOCK_CONVERSATION_LOCAL_SELLER_ID,
     buyerUserId: "user-camila-vega",
@@ -50,6 +52,8 @@ export const mockConversations: ConversationThread[] = [
   },
   {
     id: "conv-design-reels",
+    threadKind: "service",
+    clientRequestId: undefined,
     serviceId: "svc-001",
     sellerUserId: MOCK_CONVERSATION_LOCAL_SELLER_ID,
     buyerUserId: "user-diego-rios",
@@ -84,6 +88,8 @@ export const mockConversations: ConversationThread[] = [
   },
   {
     id: "conv-music-jingle",
+    threadKind: "service",
+    clientRequestId: undefined,
     serviceId: "svc-007",
     sellerUserId: MOCK_CONVERSATION_LOCAL_SELLER_ID,
     buyerUserId: "user-lucia-prado",

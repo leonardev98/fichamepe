@@ -60,6 +60,9 @@ export class ServiceOrmEntity {
   @Column({ type: 'varchar', nullable: true })
   coverImageUrl: string | null;
 
+  @Column({ type: 'boolean', default: false })
+  isFeatured: boolean;
+
   @Column({ type: 'varchar', length: 24, default: 'BORRADOR' })
   status: ServiceStatus;
 

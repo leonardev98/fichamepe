@@ -1,7 +1,21 @@
+import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FreelancerCtaButton } from "@/components/home/FreelancerCtaButton";
 import { SITE_TAGLINES } from "@/lib/constants";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Para freelancers",
+  description:
+    "Guía para freelancers que quieren publicar servicios, ganar visibilidad y conseguir clientes en FichaMePe.",
+  path: "/para-freelancers",
+  keywords: [
+    "freelancers peru",
+    "publicar servicios freelance",
+    "conseguir clientes",
+  ],
+});
 
 export default function ParaFreelancersPage() {
   return (

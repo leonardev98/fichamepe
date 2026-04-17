@@ -55,3 +55,11 @@ export type MessageNewPayload = {
   text: string;
   createdAt: string;
 };
+
+export type NotificationNewPayload = {
+  id: string;
+  type: string;
+  title: string;
+  createdAt: string;
+  unreadCount: number;
+};

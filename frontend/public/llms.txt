@@ -1,0 +1,22 @@
+# FichaMePe
+
+FichaMePe es un marketplace de talento freelance en Lima y Peru. Esta version publica servicios, perfiles de freelancers y solicitudes de clientes.
+
+## Canonical site
+- https://fichame.pe
+
+## Public content entry points
+- Home: https://fichame.pe/
+- Explorar servicios: https://fichame.pe/explorar
+- Solicitudes abiertas: https://fichame.pe/solicitar
+- Sitemap XML: https://fichame.pe/sitemap.xml
+
+## URL patterns
+- Servicio publico: https://fichame.pe/servicios/{id}
+- Perfil publico: https://fichame.pe/perfil/{id}
+- Solicitud publica: https://fichame.pe/solicitar/{id}
+
+## Priority pages
+- Como funciona: https://fichame.pe/como-funciona
+- Para freelancers: https://fichame.pe/para-freelancers
+- Preguntas frecuentes: https://fichame.pe/preguntas-frecuentes

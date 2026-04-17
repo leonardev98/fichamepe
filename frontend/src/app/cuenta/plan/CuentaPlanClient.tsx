@@ -26,9 +26,6 @@ import {
   type SubscriptionRow,
 } from "@/lib/api/subscriptions.api";
 import { useAuthStore } from "@/store/auth.store";
-import { REFERRAL_EXTRA_PUBLICATIONS_CAP } from "@/lib/publication-limits";
-
-const PRO_ACTIVE_FLOOR = 10;
 
 function SummaryStatCard({
   icon,
@@ -61,13 +58,14 @@ function SummaryStatCard({
 
 type AuthUserLite = {
   referralDirectCount: number;
-  referralSlotsEarned: number;
+  featuredActiveCount: number;
+  featuredActiveMax: number;
 };
 
 function ReferralsSummaryCard({ user }: { user: AuthUserLite }) {
   const router = useRouter();
-  const counted = Math.min(REFERRAL_EXTRA_PUBLICATIONS_CAP, Math.max(0, user.referralSlotsEarned));
-  const progressValue = counted;
+  const featuredMax = Math.max(0, user.featuredActiveMax ?? user.referralDirectCount ?? 0);
+  const featuredUsed = Math.max(0, user.featuredActiveCount ?? 0);
 
   return (
     <Card
@@ -83,9 +81,8 @@ function ReferralsSummaryCard({ user }: { user: AuthUserLite }) {
             <div className="min-w-0 space-y-1">
               <Card.Title className="text-base font-bold text-foreground">Referidos</Card.Title>
               <Card.Description className="text-xs leading-relaxed text-muted">
-                Invita perfiles nuevos: suman hasta{" "}
-                <strong className="text-foreground">{REFERRAL_EXTRA_PUBLICATIONS_CAP}</strong> publicaciones activas
-                extra (tope del programa).
+                Cada referido válido te habilita 1 publicación destacada activa para aparecer arriba
+                en el home.
               </Card.Description>
             </div>
           </div>
@@ -113,31 +110,31 @@ function ReferralsSummaryCard({ user }: { user: AuthUserLite }) {
             <p className="mt-0.5 text-[10px] text-muted">referidas</p>
           </div>
           <div className="rounded-xl border border-border/80 bg-surface/90 px-2 py-3 text-center sm:px-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Tope extra</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Cupos destacadas</p>
             <p className="mt-1 text-xl font-extrabold tabular-nums text-foreground sm:text-2xl">
-              {REFERRAL_EXTRA_PUBLICATIONS_CAP}
+              {featuredMax}
             </p>
-            <p className="mt-0.5 text-[10px] text-muted">activas</p>
+            <p className="mt-0.5 text-[10px] text-muted">disponibles</p>
           </div>
           <div className="rounded-xl border border-primary/20 bg-primary/[0.06] px-2 py-3 text-center sm:px-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Contadas</p>
-            <p className="mt-1 text-xl font-extrabold tabular-nums text-primary sm:text-2xl">{counted}</p>
-            <p className="mt-0.5 text-[10px] text-muted">para el tope</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">En uso</p>
+            <p className="mt-1 text-xl font-extrabold tabular-nums text-primary sm:text-2xl">{featuredUsed}</p>
+            <p className="mt-0.5 text-[10px] text-muted">destacadas activas</p>
           </div>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2 text-xs text-muted">
-            <span className="font-medium text-foreground">Avance hacia el tope de extras</span>
+            <span className="font-medium text-foreground">Uso de destacadas</span>
             <span className="shrink-0 tabular-nums text-muted">
-              {counted}/{REFERRAL_EXTRA_PUBLICATIONS_CAP}
+              {featuredUsed}/{featuredMax}
             </span>
           </div>
           <ProgressBar
-            aria-label="Avance de publicaciones extra por referidos"
+            aria-label="Uso de publicaciones destacadas por referidos"
             minValue={0}
-            maxValue={REFERRAL_EXTRA_PUBLICATIONS_CAP}
-            value={progressValue}
+            maxValue={Math.max(1, featuredMax)}
+            value={Math.min(featuredUsed, Math.max(1, featuredMax))}
             color="default"
             size="sm"
             className="w-full"
@@ -214,7 +211,7 @@ function ProPlanPricingCard({
   isProUser,
   publicationBaseActiveMax,
 }: ProPlanPricingCardProps) {
-  const proActiveCap = Math.max(PRO_ACTIVE_FLOOR, publicationBaseActiveMax);
+  const proActiveCap = Math.max(0, publicationBaseActiveMax);
 
   const planBadge =
     "inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary";
@@ -405,9 +402,8 @@ export function CuentaPlanClient() {
         <p className="text-xs font-semibold uppercase tracking-wide text-primary">Cuenta</p>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Planes y publicaciones</h1>
         <p className="mx-auto max-w-2xl text-sm leading-relaxed text-muted sm:mx-0">
-          Elige publicaciones permanentes o un plan mensual. Tu límite de{" "}
-          <strong className="font-semibold text-foreground">publicaciones activas</strong> crece según lo que tengas
-          contratado o comprado.
+          Publicar ahora es <strong className="font-semibold text-foreground">ilimitado</strong>.
+          Usa esta sección para entender beneficios de visibilidad y referidos.
         </p>
       </header>
 
@@ -482,41 +478,35 @@ export function CuentaPlanClient() {
         </Card.Content>
       </Card>
 
-      {!user.isPublicationExempt ? (
-        <section
-          id="ampliar-publicaciones"
-          className="scroll-mt-24 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-8"
-        >
-          <header className="border-b border-border pb-6">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Planes</p>
-            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-              Ampliar publicaciones activas
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-              Compra publicaciones permanentes o contrata el plan mensual: el equipo verifica el pago antes de sumarlas a
-              tu cuenta. Misma lógica que en «Mis publicaciones», con más contexto aquí.
-            </p>
-          </header>
-
-          <div className="mt-8">
-            <PublicationSlotsPurchasePanel
-              embedded
-              tone="light"
-              centerColumn={
-                <ProPlanPricingCard
-                  subRow={subRow}
-                  hideProRequestForm={hideProRequestForm}
-                  subBusy={subBusy}
-                  requestProPlan={requestProPlan}
-                  subMsg={subMsg}
-                  isProUser={user.isPro}
-                  publicationBaseActiveMax={publicationBaseActiveMax}
-                />
-              }
-            />
-          </div>
-        </section>
-      ) : null}
+      <section
+        id="ampliar-publicaciones"
+        className="scroll-mt-24 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-8"
+      >
+        <header className="border-b border-border pb-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Estado actual</p>
+          <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
+            Publicaciones ilimitadas activas
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+            Mientras integramos métodos de pago, no hay límites de publicaciones. Para salir arriba
+            en home, usa destacadas con referidos.
+          </p>
+        </header>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <SummaryStatCard icon={<Users className="text-primary" />} title="Regla de destacados">
+            <span className="font-semibold text-foreground">1 referido = 1 destacada activa</span>.
+            Gestiona tus cupos en{" "}
+            <Link href="/cuenta/referidos" className="font-medium text-primary underline-offset-2 hover:underline">
+              Mis referidos
+            </Link>
+            .
+          </SummaryStatCard>
+          <SummaryStatCard icon={<CreditCard className="text-primary" />} title="Métodos de pago">
+            Estamos terminando la integración. Las cards de planes se mantendrán como referencia
+            visual.
+          </SummaryStatCard>
+        </div>
+      </section>
     </div>
   );
 }

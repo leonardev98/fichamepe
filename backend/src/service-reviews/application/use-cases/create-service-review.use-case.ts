@@ -18,6 +18,8 @@ import {
   serviceReviewToPublicDto,
   type ServiceReviewPublicDto,
 } from '../mappers/service-review-public.mapper';
+import { NotificationType } from '../../../notifications/domain/notification-type';
+import { NotificationsService } from '../../../notifications/notifications.service';
 
 function isUniqueViolation(err: unknown): boolean {
   if (!(err instanceof QueryFailedError)) {
@@ -39,6 +41,7 @@ export class CreateServiceReviewUseCase {
     private readonly dataSource: DataSource,
     @InjectRepository(ConversationOrmEntity)
     private readonly conversations: Repository<ConversationOrmEntity>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async execute(
@@ -64,7 +67,7 @@ export class CreateServiceReviewUseCase {
     const isVerifiedPurchase = convCount > 0;
 
     try {
-      return await this.dataSource.transaction(async (manager) => {
+      const out = await this.dataSource.transaction(async (manager) => {
         const reviewRepo = manager.getRepository(ServiceReviewOrmEntity);
         const serviceRepo = manager.getRepository(ServiceOrmEntity);
 
@@ -116,6 +119,14 @@ export class CreateServiceReviewUseCase {
           service.title,
         );
       });
+      await this.notifications.createForUser({
+        userId: service.userId,
+        type: NotificationType.ServiceReviewReceived,
+        title: 'Nueva reseña en tu publicación',
+        body: `${dto.rating} estrellas en «${service.title}».`,
+        linkPath: `/servicios/${serviceId}`,
+      });
+      return out;
     } catch (e) {
       if (isUniqueViolation(e)) {
         throw new ConflictException('Ya publicaste una reseña en este servicio');

@@ -5,7 +5,6 @@ import { isAxiosError } from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@heroui/react/button";
-import { Switch } from "@heroui/react/switch";
 import type { SkillFormDraft } from "@/lib/api/my-services.api";
 import {
   createSkillService,
@@ -28,7 +27,6 @@ import {
   fromServiceToWizardData,
   type SkillWizardErrors,
   type SkillWizardFormData,
-  wizardStatusFromDraftToggle,
 } from "./skill-wizard.types";
 import {
   canPublish,
@@ -98,6 +96,18 @@ export function SkillWizardPageShell({ mode, skillId, initialService }: SkillWiz
   const heading = mode === "edit" ? "Editar habilidad" : "Nueva habilidad";
   const currentStatus = initialService?.status;
 
+  const sendsToReviewAfterSubmit =
+    mode === "create" ||
+    initialService?.status === "BORRADOR" ||
+    initialService?.status === "REQUIERE_CAMBIOS";
+  const featuredSlotsAvailable = useMemo(() => {
+    const max = authUser?.featuredActiveMax ?? 0;
+    const used = authUser?.featuredActiveCount ?? 0;
+    const currentBoost = initialService?.isFeatured ? 1 : 0;
+    return Math.max(0, max - used + currentBoost);
+  }, [authUser?.featuredActiveCount, authUser?.featuredActiveMax, initialService?.isFeatured]);
+  const canEnableFeatured = featuredSlotsAvailable > 0;
+
   const previewService = useMemo<ServicePublic>(() => {
     const priceNum = data.price ? Number(data.price) : null;
     const listNum =
@@ -125,7 +135,12 @@ export function SkillWizardPageShell({ mode, skillId, initialService }: SkillWiz
         /* ignore */
       }
     }
-    const nextStatus = wizardStatusFromDraftToggle(data.publishAsDraft);
+    const nextStatus =
+      mode === "create"
+        ? "EN_REVISION"
+        : initialService?.status === "BORRADOR" || initialService?.status === "REQUIERE_CAMBIOS"
+          ? "EN_REVISION"
+          : (initialService?.status ?? "EN_REVISION");
     return {
       id: initialService?.id ?? "preview",
       title: data.title || "Tu habilidad aquí",
@@ -133,6 +148,7 @@ export function SkillWizardPageShell({ mode, skillId, initialService }: SkillWiz
       price: priceNum,
       currency: "PEN",
       coverImageUrl: data.coverImageUrl ?? initialService?.coverImageUrl ?? null,
+      isFeatured: data.featuredEnabled && canEnableFeatured,
       status: nextStatus,
       isActive: false,
       viewCount: initialService?.viewCount ?? 0,
@@ -156,7 +172,7 @@ export function SkillWizardPageShell({ mode, skillId, initialService }: SkillWiz
       soldRatio: initialService?.soldRatio,
       testimonial: initialService?.testimonial,
     };
-  }, [data, initialService]);
+  }, [canEnableFeatured, data, initialService, mode]);
 
   const onPromoToggle = useCallback((enabled: boolean) => {
     setData((prev) => ({
@@ -298,31 +314,30 @@ export function SkillWizardPageShell({ mode, skillId, initialService }: SkillWiz
       deliveryTime: data.deliveryTime,
       revisionsIncluded: data.revisionsIncluded,
       coverImageUrl: data.coverImageUrl,
+      isFeatured: data.featuredEnabled && canEnableFeatured,
       status: "BORRADOR",
     };
     try {
-      const shouldSendToReview = !data.publishAsDraft;
-      if (shouldSendToReview && authUser?.emailVerified === false) {
+      if (sendsToReviewAfterSubmit && authUser?.emailVerified === false) {
         setSubmitError(
           "Verifica tu correo para enviar a revisión. Revisa el correo que te enviamos o pulsa «Reenviar correo» en la barra superior.",
         );
         return;
       }
       if (mode === "edit" && skillId) {
-        await updateSkillService(skillId, {
-          ...payload,
-          status: wizardStatusFromDraftToggle(data.publishAsDraft),
-        });
+        const { status: _status, ...fieldsOnly } = payload;
+        await updateSkillService(skillId, fieldsOnly);
+        if (sendsToReviewAfterSubmit) {
+          await publishSkill(skillId);
+        }
       } else {
         const created = await createSkillService(payload);
-        if (shouldSendToReview) {
-          await publishSkill(created.id);
-        }
+        await publishSkill(created.id);
       }
       router.push(
-        shouldSendToReview
+        sendsToReviewAfterSubmit
           ? "/cuenta/publicaciones?toast=review-submitted"
-          : "/cuenta/publicaciones?toast=draft-saved",
+          : "/cuenta/publicaciones?toast=changes-saved",
       );
     } catch (error) {
       setSubmitError(extractApiErrorMessage(error));
@@ -408,46 +423,24 @@ export function SkillWizardPageShell({ mode, skillId, initialService }: SkillWiz
             onConfirmCroppedCover={handleCroppedCoverImageUpload}
             onPromoToggle={onPromoToggle}
             onPromoPreset={onPromoPreset}
+            featuredSlotsAvailable={featuredSlotsAvailable}
+            onFeaturedToggle={(enabled) => onFieldChange("featuredEnabled", enabled)}
           />
         ) : null}
         {step === 2 ? <SkillPreviewStep data={data} previewService={previewService} /> : null}
       </div>
 
       {step === 2 ? (
-        <div className="rounded-2xl border-2 border-border bg-surface-elevated/30 p-4 shadow-sm sm:p-5">
-          <Switch
-            isSelected={data.publishAsDraft}
-            onChange={(checked) => onFieldChange("publishAsDraft", checked)}
-            className="text-sm text-foreground"
-            aria-label="Publicar como borrador"
-          >
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
-            <Switch.Content>
-              <span className="text-sm font-semibold text-foreground">
-                {mode === "edit"
-                  ? "Guardar como borrador (no aparece en Explorar hasta que reactives)"
-                  : "Publicar como borrador"}
-              </span>
-            </Switch.Content>
-          </Switch>
-          {mode === "edit" ? (
-            <p className="mt-2 text-xs leading-relaxed text-muted">
-              Si lo desmarcas, enviaremos la actualización a revisión antes de publicarse.
-            </p>
-          ) : (
-            <p className="mt-2 text-xs leading-relaxed text-muted">
-              Al publicar, tu servicio pasará primero por revisión del equipo antes de aparecer en
-              Explorar.
-            </p>
-          )}
-        </div>
+        <p className="rounded-2xl border-2 border-border bg-surface-elevated/30 px-4 py-3 text-xs leading-relaxed text-muted shadow-sm sm:px-5 sm:py-4 sm:text-sm">
+          {sendsToReviewAfterSubmit
+            ? "Al enviar, la ficha pasa a revisión del equipo antes de aparecer en Explorar."
+            : "Los cambios se guardan en tu publicación actual."}
+        </p>
       ) : null}
       {submitError ? (
         <div className="space-y-2">
           <p className="text-sm font-medium text-accent-red">{submitError}</p>
-          {submitError.includes("Límite de publicaciones") ? (
+          {submitError.includes("destacadas") ? (
             <p className="text-sm text-muted">
               <Link
                 href="/cuenta/referidos"
@@ -455,7 +448,7 @@ export function SkillWizardPageShell({ mode, skillId, initialService }: SkillWiz
               >
                 Abrir «Mis referidos»
               </Link>{" "}
-              para compartir tu código o ver cómo ganar más cupos.
+              para conseguir más cupos de destacadas.
             </p>
           ) : null}
         </div>
@@ -485,7 +478,7 @@ export function SkillWizardPageShell({ mode, skillId, initialService }: SkillWiz
             isDisabled={saving || !canPublish(data)}
             onPress={handleSubmit}
           >
-            {data.publishAsDraft ? "Guardar borrador" : "Publicar habilidad"}
+            {sendsToReviewAfterSubmit ? "Enviar a revisión" : "Guardar cambios"}
           </Button>
         )}
       </div>

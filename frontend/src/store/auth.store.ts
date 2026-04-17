@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { normalizeCountryCode } from "@/lib/country";
 import type { AuthUser } from "@/types/auth";
 import { normalizeAuthUser } from "@/lib/normalize-auth-user";
 
@@ -43,6 +44,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       pendingEmailVerificationToast: false,
       user: normalizeAuthUser({
         ...user,
+        countryCode: normalizeCountryCode(user.countryCode ?? null),
         avatarUrl: user.avatarUrl ?? null,
         referralCode: user.referralCode ?? "",
         hasReferredBy: user.hasReferredBy ?? false,
@@ -52,6 +54,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         publicationBaseActiveMax: user.publicationBaseActiveMax ?? null,
         publicationMax: user.publicationMax ?? null,
         isPublicationExempt: user.isPublicationExempt ?? false,
+        featuredActiveCount: user.featuredActiveCount ?? 0,
+        featuredActiveMax: user.featuredActiveMax ?? user.referralDirectCount ?? 0,
         referralDirectCount: user.referralDirectCount ?? 0,
         referralSlotsEarned: user.referralSlotsEarned ?? 0,
         purchasedPublicationSlots: user.purchasedPublicationSlots ?? 0,
@@ -60,6 +64,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
     void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
       void useConversationsStore.getState().syncFromApi();
+    });
+    void import("@/stores/notificationsStore").then(({ useNotificationsStore }) => {
+      void useNotificationsStore.getState().syncFromApi();
     });
   },
   setAccessToken: (accessToken) =>
@@ -79,6 +86,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
         useConversationsStore.getState().reset();
       });
+      void import("@/stores/notificationsStore").then(({ useNotificationsStore }) => {
+        useNotificationsStore.getState().reset();
+      });
     }
   },
   logout: () => {
@@ -97,6 +107,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
         useConversationsStore.getState().reset();
       });
+      void import("@/stores/notificationsStore").then(({ useNotificationsStore }) => {
+        useNotificationsStore.getState().reset();
+      });
     }
     void import("@/lib/api").then(({ api }) =>
       api.post("/auth/logout", {}, { skipAuthRefresh: true }).catch(() => {}),
@@ -105,6 +118,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setUser: (user) => {
     const normalized = normalizeAuthUser({
       ...user,
+      countryCode: normalizeCountryCode(user.countryCode ?? null),
       avatarUrl: user.avatarUrl ?? null,
       referralCode: user.referralCode ?? "",
       hasReferredBy: user.hasReferredBy ?? false,
@@ -114,6 +128,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       publicationBaseActiveMax: user.publicationBaseActiveMax ?? null,
       publicationMax: user.publicationMax ?? null,
       isPublicationExempt: user.isPublicationExempt ?? false,
+      featuredActiveCount: user.featuredActiveCount ?? 0,
+      featuredActiveMax: user.featuredActiveMax ?? user.referralDirectCount ?? 0,
       referralDirectCount: user.referralDirectCount ?? 0,
       referralSlotsEarned: user.referralSlotsEarned ?? 0,
       purchasedPublicationSlots: user.purchasedPublicationSlots ?? 0,

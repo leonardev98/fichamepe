@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { MessageSquareWarning } from "lucide-react";
 import { Button } from "@heroui/react/button";
@@ -9,12 +10,55 @@ import { SKILL_CATEGORIES } from "@/components/skills/skill-wizard.constants";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import {
+  approveAdminClientRequest,
+  fetchAdminClientRequestReviewQueue,
+  requestAdminClientRequestChanges,
+} from "@/lib/api/admin-client-requests.api";
+import {
   approveAdminService,
   fetchAdminReviewQueue,
   requestAdminServiceChanges,
 } from "@/lib/api/admin-services.api";
+import {
+  applyAdminModerationReport,
+  dismissAdminModerationReport,
+  fetchAdminModerationReports,
+} from "@/lib/api/moderation-reports.api";
+import { parseApiErrorMessage } from "@/lib/api/auth.api";
+import { moderationReasonLabel } from "@/lib/moderation-reason-options";
 import { isActivePromo } from "@/lib/service-promo";
+import type { AdminClientRequestQueueItem } from "@/types/client-request.types";
+import type { AdminModerationReportItem, ModerationTargetType } from "@/types/moderation.types";
 import type { ServicePublic, ServiceStatus } from "@/types/service.types";
+
+type AdminQueueTab = "services" | "client-requests" | "reports";
+
+type RejectingState =
+  | null
+  | { kind: "service"; item: ServicePublic }
+  | { kind: "client-request"; item: AdminClientRequestQueueItem };
+
+const REPORT_TARGET_LABEL: Record<ModerationTargetType, string> = {
+  service: "Publicación",
+  client_request: "Solicitud",
+  client_request_comment: "Comentario",
+  user: "Usuario",
+};
+
+function reportPublicHref(r: AdminModerationReportItem): string | null {
+  switch (r.targetType) {
+    case "service":
+      return `/servicios/${r.targetId}`;
+    case "client_request":
+      return `/solicitar/${r.targetId}`;
+    case "client_request_comment":
+      return r.parentClientRequestId ? `/solicitar/${r.parentClientRequestId}` : null;
+    case "user":
+      return r.subjectProfileId ? `/perfil/${r.subjectProfileId}` : null;
+    default:
+      return null;
+  }
+}
 
 function adminStatusPill(status: ServiceStatus): { label: string; className: string } {
   switch (status) {
@@ -47,35 +91,91 @@ function adminStatusPill(status: ServiceStatus): { label: string; className: str
 }
 
 export function DashboardAdminClient() {
-  const [items, setItems] = useState<ServicePublic[]>([]);
+  const [queueTab, setQueueTab] = useState<AdminQueueTab>("services");
+
+  const [serviceItems, setServiceItems] = useState<ServicePublic[]>([]);
+  const [serviceSelectedId, setServiceSelectedId] = useState<string | null>(null);
+
+  const [requestItems, setRequestItems] = useState<AdminClientRequestQueueItem[]>([]);
+  const [requestSelectedId, setRequestSelectedId] = useState<string | null>(null);
+
+  const [reportItems, setReportItems] = useState<AdminModerationReportItem[]>([]);
+  const [reportSelectedId, setReportSelectedId] = useState<string | null>(null);
+  const [reportTypeFilter, setReportTypeFilter] = useState<ModerationTargetType | "all">("all");
+
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState<ServicePublic | null>(null);
+  const [rejecting, setRejecting] = useState<RejectingState>(null);
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
 
-  const selected = useMemo(
-    () => items.find((item) => item.id === selectedId) ?? null,
-    [items, selectedId],
+  const selectedService = useMemo(
+    () => serviceItems.find((item) => item.id === serviceSelectedId) ?? null,
+    [serviceItems, serviceSelectedId],
+  );
+
+  const selectedRequest = useMemo(
+    () => requestItems.find((item) => item.id === requestSelectedId) ?? null,
+    [requestItems, requestSelectedId],
+  );
+
+  const selectedReport = useMemo(
+    () => reportItems.find((item) => item.id === reportSelectedId) ?? null,
+    [reportItems, reportSelectedId],
   );
 
   const reload = async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const queue = await fetchAdminReviewQueue();
-      setItems(queue);
-      if (!selectedId && queue.length > 0) {
-        setSelectedId(queue[0]?.id ?? null);
-      }
-      if (selectedId && !queue.some((item) => item.id === selectedId)) {
-        setSelectedId(queue[0]?.id ?? null);
+      if (queueTab === "services") {
+        const queue = await fetchAdminReviewQueue();
+        setServiceItems(queue);
+        if (!serviceSelectedId && queue.length > 0) {
+          setServiceSelectedId(queue[0]?.id ?? null);
+        }
+        if (serviceSelectedId && !queue.some((item) => item.id === serviceSelectedId)) {
+          setServiceSelectedId(queue[0]?.id ?? null);
+        }
+      } else if (queueTab === "client-requests") {
+        const { requests } = await fetchAdminClientRequestReviewQueue();
+        setRequestItems(requests);
+        if (!requestSelectedId && requests.length > 0) {
+          setRequestSelectedId(requests[0]?.id ?? null);
+        }
+        if (requestSelectedId && !requests.some((item) => item.id === requestSelectedId)) {
+          setRequestSelectedId(requests[0]?.id ?? null);
+        }
+      } else {
+        const data = await fetchAdminModerationReports({
+          reviewStatus: "pending",
+          targetType: reportTypeFilter === "all" ? undefined : reportTypeFilter,
+          limit: 100,
+          offset: 0,
+        });
+        setReportItems(data.reports);
+        if (!reportSelectedId && data.reports.length > 0) {
+          setReportSelectedId(data.reports[0]?.id ?? null);
+        }
+        if (
+          reportSelectedId &&
+          !data.reports.some((item) => item.id === reportSelectedId)
+        ) {
+          setReportSelectedId(data.reports[0]?.id ?? null);
+        }
       }
     } catch {
-      setItems([]);
-      setLoadError("No pudimos cargar la cola de revisión.");
+      if (queueTab === "services") {
+        setServiceItems([]);
+        setLoadError("No pudimos cargar la cola de publicaciones.");
+      } else if (queueTab === "client-requests") {
+        setRequestItems([]);
+        setLoadError("No pudimos cargar la cola de solicitudes.");
+      } else {
+        setReportItems([]);
+        setLoadError("No pudimos cargar los reportes.");
+      }
     } finally {
       setLoading(false);
     }
@@ -84,9 +184,9 @@ export function DashboardAdminClient() {
   useEffect(() => {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [queueTab, reportTypeFilter]);
 
-  const approveSelected = async (service: ServicePublic) => {
+  const approveService = async (service: ServicePublic) => {
     setBusyId(service.id);
     try {
       await approveAdminService(service.id);
@@ -96,7 +196,17 @@ export function DashboardAdminClient() {
     }
   };
 
-  const rejectSelected = async () => {
+  const approveRequest = async (req: AdminClientRequestQueueItem) => {
+    setBusyId(req.id);
+    try {
+      await approveAdminClientRequest(req.id);
+      await reload();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const rejectSubmit = async () => {
     if (!rejecting) return;
     const feedback = comment.trim();
     if (feedback.length < 10) {
@@ -104,9 +214,13 @@ export function DashboardAdminClient() {
       return;
     }
     setCommentError(null);
-    setBusyId(rejecting.id);
+    setBusyId(rejecting.item.id);
     try {
-      await requestAdminServiceChanges(rejecting.id, feedback);
+      if (rejecting.kind === "service") {
+        await requestAdminServiceChanges(rejecting.item.id, feedback);
+      } else {
+        await requestAdminClientRequestChanges(rejecting.item.id, feedback);
+      }
       setRejecting(null);
       setComment("");
       await reload();
@@ -115,16 +229,119 @@ export function DashboardAdminClient() {
     }
   };
 
+  const dismissReport = async (r: AdminModerationReportItem) => {
+    setBusyId(r.id);
+    try {
+      await dismissAdminModerationReport(r.id);
+      await reload();
+    } catch (e: unknown) {
+      window.alert(parseApiErrorMessage(e, "No se pudo descartar el reporte."));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const applyReport = async (r: AdminModerationReportItem) => {
+    setBusyId(r.id);
+    try {
+      await applyAdminModerationReport(r.id);
+      await reload();
+    } catch (e: unknown) {
+      window.alert(parseApiErrorMessage(e, "No se pudo aplicar la moderación."));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const queueTabClass = (active: boolean) =>
+    `rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+      active ? "bg-primary text-white shadow-sm" : "text-muted hover:bg-primary/5 hover:text-foreground"
+    }`;
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8">
       <header className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-primary">Administración</p>
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-          Revisión de publicaciones
+          {queueTab === "services"
+            ? "Revisión de publicaciones"
+            : queueTab === "client-requests"
+              ? "Revisión de solicitudes"
+              : "Reportes de usuarios"}
         </h1>
         <p className="text-sm text-muted">
-          Aprueba publicaciones listas o devuelve con observaciones claras para mejorar su calidad.
+          {queueTab === "services"
+            ? "Aprueba publicaciones listas o devuelve con observaciones claras para mejorar su calidad."
+            : queueTab === "client-requests"
+              ? "Aprueba solicitudes de trabajo para publicarlas o devuélvelas con feedback al solicitante."
+              : "Revisa denuncias: descarta si no aplica o aplica moderación para ocultar el contenido o desactivar la cuenta."}
         </p>
+        <div
+          className="mt-3 inline-flex flex-wrap gap-1 rounded-full border border-border bg-white p-1"
+          role="tablist"
+          aria-label="Cola de moderación"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={queueTab === "services"}
+            className={queueTabClass(queueTab === "services")}
+            onClick={() => {
+              setQueueTab("services");
+              setRejecting(null);
+              setComment("");
+              setCommentError(null);
+            }}
+          >
+            Publicaciones
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={queueTab === "client-requests"}
+            className={queueTabClass(queueTab === "client-requests")}
+            onClick={() => {
+              setQueueTab("client-requests");
+              setRejecting(null);
+              setComment("");
+              setCommentError(null);
+            }}
+          >
+            Solicitudes
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={queueTab === "reports"}
+            className={queueTabClass(queueTab === "reports")}
+            onClick={() => {
+              setQueueTab("reports");
+              setRejecting(null);
+              setComment("");
+              setCommentError(null);
+            }}
+          >
+            Reportes
+          </button>
+        </div>
+        {queueTab === "reports" ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted">Filtrar tipo:</span>
+            <select
+              value={reportTypeFilter}
+              onChange={(e) =>
+                setReportTypeFilter(e.target.value as ModerationTargetType | "all")
+              }
+              className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold text-foreground"
+            >
+              <option value="all">Todos</option>
+              <option value="service">Publicación</option>
+              <option value="client_request">Solicitud</option>
+              <option value="client_request_comment">Comentario</option>
+              <option value="user">Usuario</option>
+            </select>
+          </div>
+        ) : null}
       </header>
 
       {loadError ? (
@@ -140,12 +357,12 @@ export function DashboardAdminClient() {
         </div>
       ) : null}
 
-      {!loadError ? (
+      {!loadError && queueTab === "services" ? (
         <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
           <section className="rounded-2xl border border-border bg-white p-3">
             <div className="mb-3 flex items-center justify-between px-2">
               <p className="text-sm font-semibold text-foreground">Pendientes</p>
-              <p className="text-xs font-semibold text-muted">{items.length}</p>
+              <p className="text-xs font-semibold text-muted">{serviceItems.length}</p>
             </div>
             {loading ? (
               <div className="space-y-2">
@@ -153,19 +370,19 @@ export function DashboardAdminClient() {
                   <div key={idx} className="h-16 animate-pulse rounded-xl bg-surface-elevated" />
                 ))}
               </div>
-            ) : items.length === 0 ? (
+            ) : serviceItems.length === 0 ? (
               <div className="rounded-xl border border-border bg-surface-elevated px-4 py-8 text-center">
                 <p className="text-sm font-medium text-foreground">No hay publicaciones en revisión</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {items.map((item) => {
-                  const active = item.id === selectedId;
+                {serviceItems.map((item) => {
+                  const active = item.id === serviceSelectedId;
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setSelectedId(item.id)}
+                      onClick={() => setServiceSelectedId(item.id)}
                       className={`w-full rounded-xl border px-3 py-2 text-left transition ${
                         active
                           ? "border-primary/35 bg-primary/10"
@@ -184,16 +401,16 @@ export function DashboardAdminClient() {
           </section>
 
           <section className="flex min-h-[min(70vh,640px)] flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-            {!selected ? (
+            {!selectedService ? (
               <div className="flex min-h-[300px] flex-1 items-center justify-center px-6 text-sm text-muted">
                 Selecciona una publicación para revisar sus detalles.
               </div>
             ) : (
               <>
                 <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary/25 via-primary/10 to-surface-elevated">
-                  {selected.coverImageUrl ? (
+                  {selectedService.coverImageUrl ? (
                     <Image
-                      src={selected.coverImageUrl}
+                      src={selectedService.coverImageUrl}
                       alt=""
                       fill
                       className="object-cover"
@@ -209,9 +426,9 @@ export function DashboardAdminClient() {
                     </div>
                   )}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" />
-                  {isActivePromo(selected) ? (
+                  {isActivePromo(selectedService) ? (
                     <div className="absolute bottom-3 right-3 z-[1]">
-                      <CountdownTimer endsAt={selected.flashDealEndsAt} overlay />
+                      <CountdownTimer endsAt={selectedService.flashDealEndsAt} overlay />
                     </div>
                   ) : null}
                 </div>
@@ -223,10 +440,10 @@ export function DashboardAdminClient() {
                     </p>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <h2 className="max-w-[min(100%,52rem)] text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                        {selected.title}
+                        {selectedService.title}
                       </h2>
                       {(() => {
-                        const pill = adminStatusPill(selected.status);
+                        const pill = adminStatusPill(selectedService.status);
                         return (
                           <span
                             className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${pill.className}`}
@@ -237,10 +454,10 @@ export function DashboardAdminClient() {
                       })()}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
-                      {selected.profile?.avatarUrl ? (
+                      {selectedService.profile?.avatarUrl ? (
                         <span className="relative size-9 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-sm">
                           <Image
-                            src={selected.profile.avatarUrl}
+                            src={selectedService.profile.avatarUrl}
                             alt=""
                             width={36}
                             height={36}
@@ -250,17 +467,17 @@ export function DashboardAdminClient() {
                       ) : null}
                       <span>
                         <span className="font-medium text-foreground/80">Autor:</span>{" "}
-                        {selected.profile?.displayName ?? "Sin nombre"}
+                        {selectedService.profile?.displayName ?? "Sin nombre"}
                         <span className="mx-1.5 text-border">·</span>
                         <span className="font-medium text-foreground/80">Enviada:</span>{" "}
-                        {selected.submittedAt
-                          ? new Date(selected.submittedAt).toLocaleString("es-PE")
+                        {selectedService.submittedAt
+                          ? new Date(selectedService.submittedAt).toLocaleString("es-PE")
                           : "sin fecha"}
                       </span>
                     </div>
                   </div>
 
-                  {selected.moderationComment ? (
+                  {selectedService.moderationComment ? (
                     <div className="flex gap-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3">
                       <MessageSquareWarning
                         className="mt-0.5 size-5 shrink-0 text-accent"
@@ -271,7 +488,7 @@ export function DashboardAdminClient() {
                           Comentario previo
                         </p>
                         <p className="mt-1 text-sm leading-relaxed text-foreground/90">
-                          {selected.moderationComment}
+                          {selectedService.moderationComment}
                         </p>
                       </div>
                     </div>
@@ -287,8 +504,8 @@ export function DashboardAdminClient() {
                           Categoría
                         </dt>
                         <dd className="mt-0.5 text-sm font-semibold text-foreground">
-                          {SKILL_CATEGORIES.find((c) => c.id === selected.category)?.label ??
-                            selected.category}
+                          {SKILL_CATEGORIES.find((c) => c.id === selectedService.category)?.label ??
+                            selectedService.category}
                         </dd>
                       </div>
                       <div className="rounded-xl border border-border/80 bg-surface-elevated/60 px-3 py-2.5">
@@ -296,7 +513,7 @@ export function DashboardAdminClient() {
                           Modalidad
                         </dt>
                         <dd className="mt-0.5 text-sm font-semibold text-foreground">
-                          {selected.deliveryMode}
+                          {selectedService.deliveryMode}
                         </dd>
                       </div>
                       <div className="rounded-xl border border-border/80 bg-surface-elevated/60 px-3 py-2.5">
@@ -304,7 +521,7 @@ export function DashboardAdminClient() {
                           Plazo de entrega
                         </dt>
                         <dd className="mt-0.5 text-sm font-semibold text-foreground">
-                          {selected.deliveryTime}
+                          {selectedService.deliveryTime}
                         </dd>
                       </div>
                       <div className="rounded-xl border border-border/80 bg-surface-elevated/60 px-3 py-2.5">
@@ -312,7 +529,7 @@ export function DashboardAdminClient() {
                           Revisiones incluidas
                         </dt>
                         <dd className="mt-0.5 text-sm font-semibold text-foreground">
-                          {selected.revisionsIncluded}
+                          {selectedService.revisionsIncluded}
                         </dd>
                       </div>
                     </dl>
@@ -323,17 +540,17 @@ export function DashboardAdminClient() {
                       Descripción
                     </p>
                     <div className="max-h-56 overflow-y-auto rounded-xl border border-border bg-surface-elevated/50 px-4 py-3 text-sm leading-relaxed text-foreground/90 shadow-inner">
-                      {selected.description}
+                      {selectedService.description}
                     </div>
                   </div>
 
-                  {selected.tags.length > 0 ? (
+                  {selectedService.tags.length > 0 ? (
                     <div>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
                         Etiquetas
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {selected.tags.map((tag) => (
+                        {selectedService.tags.map((tag) => (
                           <span
                             key={tag}
                             className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary"
@@ -349,24 +566,24 @@ export function DashboardAdminClient() {
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
                       Precio
                     </p>
-                    {isActivePromo(selected) && selected.flashDealEndsAt ? (
+                    {isActivePromo(selectedService) && selectedService.flashDealEndsAt ? (
                       <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
                         <span>
                           Oferta vigente hasta{" "}
                           <span className="font-medium text-foreground">
-                            {new Date(selected.flashDealEndsAt).toLocaleString("es-PE")}
+                            {new Date(selectedService.flashDealEndsAt).toLocaleString("es-PE")}
                           </span>
                         </span>
                         <span aria-hidden className="text-border">
                           ·
                         </span>
-                        <CountdownTimer endsAt={selected.flashDealEndsAt} />
+                        <CountdownTimer endsAt={selectedService.flashDealEndsAt} />
                       </div>
                     ) : null}
                     <PriceDisplay
                       variant="card"
-                      price={selected.price}
-                      previousPrice={selected.previousPrice}
+                      price={selectedService.price}
+                      previousPrice={selectedService.previousPrice}
                     />
                   </div>
                 </div>
@@ -375,10 +592,10 @@ export function DashboardAdminClient() {
                   <Button
                     variant="outline"
                     className="rounded-full border-accent-red/40 text-accent-red"
-                    isDisabled={busyId === selected.id}
+                    isDisabled={busyId === selectedService.id}
                     onPress={() => {
-                      setRejecting(selected);
-                      setComment(selected.moderationComment ?? "");
+                      setRejecting({ kind: "service", item: selectedService });
+                      setComment(selectedService.moderationComment ?? "");
                       setCommentError(null);
                     }}
                   >
@@ -387,10 +604,246 @@ export function DashboardAdminClient() {
                   <Button
                     variant="primary"
                     className="rounded-full bg-primary px-6 text-white"
-                    isDisabled={busyId === selected.id}
-                    onPress={() => void approveSelected(selected)}
+                    isDisabled={busyId === selectedService.id}
+                    onPress={() => void approveService(selectedService)}
                   >
                     Aprobar publicación
+                  </Button>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {!loadError && queueTab === "client-requests" ? (
+        <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
+          <section className="rounded-2xl border border-border bg-white p-3">
+            <div className="mb-3 flex items-center justify-between px-2">
+              <p className="text-sm font-semibold text-foreground">Pendientes</p>
+              <p className="text-xs font-semibold text-muted">{requestItems.length}</p>
+            </div>
+            {loading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <div key={idx} className="h-16 animate-pulse rounded-xl bg-surface-elevated" />
+                ))}
+              </div>
+            ) : requestItems.length === 0 ? (
+              <div className="rounded-xl border border-border bg-surface-elevated px-4 py-8 text-center">
+                <p className="text-sm font-medium text-foreground">No hay solicitudes en revisión</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {requestItems.map((item) => {
+                  const active = item.id === requestSelectedId;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setRequestSelectedId(item.id)}
+                      className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                        active
+                          ? "border-primary/35 bg-primary/10"
+                          : "border-border bg-white hover:border-primary/25 hover:bg-primary/[0.04]"
+                      }`}
+                    >
+                      <p className="line-clamp-1 text-sm font-semibold text-foreground">{item.title}</p>
+                      <p className="line-clamp-1 text-xs text-muted">
+                        {item.budget}
+                        {item.submittedAt
+                          ? ` · ${new Date(item.submittedAt).toLocaleDateString("es-PE")}`
+                          : ""}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="flex min-h-[min(70vh,520px)] flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+            {!selectedRequest ? (
+              <div className="flex min-h-[300px] flex-1 items-center justify-center px-6 text-sm text-muted">
+                Selecciona una solicitud para revisar sus detalles.
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-1 flex-col gap-5 p-5 pb-4 lg:pb-6">
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      Solicitud en revisión
+                    </p>
+                    <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                      {selectedRequest.title}
+                    </h2>
+                    <p className="text-sm text-muted">
+                      <span className="font-medium text-foreground/80">Presupuesto:</span>{" "}
+                      {selectedRequest.budget}
+                      <span className="mx-1.5 text-border">·</span>
+                      <span className="font-medium text-foreground/80">Usuario:</span>{" "}
+                      <span className="font-mono text-xs">{selectedRequest.userId}</span>
+                    </p>
+                    <p className="text-sm text-muted">
+                      <span className="font-medium text-foreground/80">Enviada:</span>{" "}
+                      {selectedRequest.submittedAt
+                        ? new Date(selectedRequest.submittedAt).toLocaleString("es-PE")
+                        : "sin fecha"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                      Detalle
+                    </p>
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-border bg-surface-elevated/50 px-4 py-3 text-sm leading-relaxed text-foreground/90 shadow-inner">
+                      {selectedRequest.detail?.trim() ? selectedRequest.detail : "Sin descripción."}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sticky bottom-0 z-10 mt-auto flex flex-wrap justify-end gap-2 border-t border-border bg-white/95 px-5 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur-sm supports-[backdrop-filter]:bg-white/85">
+                  <Button
+                    variant="outline"
+                    className="rounded-full border-accent-red/40 text-accent-red"
+                    isDisabled={busyId === selectedRequest.id}
+                    onPress={() => {
+                      setRejecting({ kind: "client-request", item: selectedRequest });
+                      setComment("");
+                      setCommentError(null);
+                    }}
+                  >
+                    Solicitar cambios
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="rounded-full bg-primary px-6 text-white"
+                    isDisabled={busyId === selectedRequest.id}
+                    onPress={() => void approveRequest(selectedRequest)}
+                  >
+                    Aprobar solicitud
+                  </Button>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {!loadError && queueTab === "reports" ? (
+        <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
+          <section className="rounded-2xl border border-border bg-white p-3">
+            <div className="mb-3 flex items-center justify-between px-2">
+              <p className="text-sm font-semibold text-foreground">Pendientes</p>
+              <p className="text-xs font-semibold text-muted">{reportItems.length}</p>
+            </div>
+            {loading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <div key={idx} className="h-16 animate-pulse rounded-xl bg-surface-elevated" />
+                ))}
+              </div>
+            ) : reportItems.length === 0 ? (
+              <div className="rounded-xl border border-border bg-surface-elevated px-4 py-8 text-center">
+                <p className="text-sm font-medium text-foreground">No hay reportes pendientes</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {reportItems.map((item) => {
+                  const active = item.id === reportSelectedId;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setReportSelectedId(item.id)}
+                      className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                        active
+                          ? "border-primary/35 bg-primary/10"
+                          : "border-border bg-white hover:border-primary/25 hover:bg-primary/[0.04]"
+                      }`}
+                    >
+                      <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                        {REPORT_TARGET_LABEL[item.targetType]} · {item.targetSummary}
+                      </p>
+                      <p className="line-clamp-1 text-xs text-muted">
+                        {moderationReasonLabel(item.reason)} ·{" "}
+                        {new Date(item.createdAt).toLocaleString("es-PE")}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="flex min-h-[min(70vh,520px)] flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+            {!selectedReport ? (
+              <div className="flex min-h-[300px] flex-1 items-center justify-center px-6 text-sm text-muted">
+                Selecciona un reporte para ver el detalle.
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-1 flex-col gap-5 p-5 pb-4 lg:pb-6">
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      Reporte pendiente
+                    </p>
+                    <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                      {REPORT_TARGET_LABEL[selectedReport.targetType]}
+                    </h2>
+                    <p className="text-sm text-muted">
+                      <span className="font-medium text-foreground/80">Objeto:</span>{" "}
+                      {selectedReport.targetSummary}
+                    </p>
+                    <p className="text-sm text-muted">
+                      <span className="font-medium text-foreground/80">Motivo:</span>{" "}
+                      {moderationReasonLabel(selectedReport.reason)}
+                    </p>
+                    <p className="text-sm text-muted">
+                      <span className="font-medium text-foreground/80">Reporter:</span>{" "}
+                      {selectedReport.reporter.fullName?.trim() || selectedReport.reporter.email}
+                    </p>
+                    {selectedReport.details?.trim() ? (
+                      <div>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                          Detalle del reporte
+                        </p>
+                        <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-surface-elevated/50 px-4 py-3 text-sm text-foreground/90">
+                          {selectedReport.details}
+                        </div>
+                      </div>
+                    ) : null}
+                    {reportPublicHref(selectedReport) ? (
+                      <Link
+                        href={reportPublicHref(selectedReport)!}
+                        className="inline-flex text-sm font-semibold text-primary hover:underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Ver en el sitio público
+                      </Link>
+                    ) : (
+                      <p className="text-xs text-muted">Enlace público no disponible para este tipo.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="sticky bottom-0 z-10 mt-auto flex flex-wrap justify-end gap-2 border-t border-border bg-white/95 px-5 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur-sm supports-[backdrop-filter]:bg-white/85">
+                  <Button
+                    variant="outline"
+                    className="rounded-full border-border px-5"
+                    isDisabled={busyId === selectedReport.id}
+                    onPress={() => void dismissReport(selectedReport)}
+                  >
+                    Descartar
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="rounded-full bg-primary px-6 text-white"
+                    isDisabled={busyId === selectedReport.id}
+                    onPress={() => void applyReport(selectedReport)}
+                  >
+                    Aplicar moderación
                   </Button>
                 </div>
               </>
@@ -413,7 +866,9 @@ export function DashboardAdminClient() {
               </Modal.Header>
               <Modal.Body className="space-y-3 px-5 py-4">
                 <p className="text-sm text-muted">
-                  Explica al propietario qué debe mejorar para que la publicación pueda aprobarse.
+                  {rejecting?.kind === "client-request"
+                    ? "Indica al solicitante qué debe aclarar o ajustar antes de publicar la solicitud."
+                    : "Explica al propietario qué debe mejorar para que la publicación pueda aprobarse."}
                 </p>
                 <textarea
                   value={comment}
@@ -437,8 +892,8 @@ export function DashboardAdminClient() {
                 <Button
                   variant="danger"
                   className="rounded-full bg-accent-red px-5 text-white hover:opacity-95"
-                  isDisabled={!rejecting || busyId === rejecting.id}
-                  onPress={() => void rejectSelected()}
+                  isDisabled={!rejecting || busyId === rejecting.item.id}
+                  onPress={() => void rejectSubmit()}
                 >
                   Enviar observaciones
                 </Button>

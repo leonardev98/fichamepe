@@ -15,6 +15,7 @@ import type { RequestUser } from '../../../auth/domain/services/auth-token.servi
 import { GetUserByIdUseCase } from '../../application/use-cases/get-user-by-id.use-case';
 import { UpdateUserUseCase } from '../../application/use-cases/update-user.use-case';
 import { ApplyReferralUseCase } from '../../application/use-cases/apply-referral.use-case';
+import { ListMyReferredUsersUseCase } from '../../application/use-cases/list-my-referred-users.use-case';
 import { UpdateUserBodyDto } from '../../application/dto/update-user.dto';
 import { ApplyReferralBodyDto } from '../../application/dto/apply-referral.dto';
 
@@ -25,7 +26,13 @@ export class UsersController {
     private readonly getUserById: GetUserByIdUseCase,
     private readonly updateUser: UpdateUserUseCase,
     private readonly applyReferral: ApplyReferralUseCase,
+    private readonly listMyReferredUsers: ListMyReferredUsersUseCase,
   ) {}
+
+  @Get('me/referrals')
+  listMyReferrals(@CurrentUser() user: RequestUser) {
+    return this.listMyReferredUsers.execute(user.userId);
+  }
 
   @Post('me/referral')
   applyReferralCode(

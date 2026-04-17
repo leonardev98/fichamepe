@@ -4,21 +4,14 @@ import Link from "next/link";
 import { Users } from "lucide-react";
 import { ProgressBar } from "@heroui/react/progress-bar";
 import type { AuthUser } from "@/types/auth";
-import { REFERRAL_EXTRA_PUBLICATIONS_CAP } from "@/lib/publication-limits";
 
 type Props = {
   user: AuthUser;
 };
 
 export function ReferralPublicationBoostCta({ user }: Props) {
-  if (user.isPublicationExempt || user.isPro || user.publicationActiveMax == null) {
-    return null;
-  }
-
-  const counted = Math.min(
-    REFERRAL_EXTRA_PUBLICATIONS_CAP,
-    Math.max(0, user.referralSlotsEarned),
-  );
+  const featuredMax = Math.max(0, user.featuredActiveMax ?? user.referralDirectCount ?? 0);
+  const featuredUsed = Math.max(0, user.featuredActiveCount ?? 0);
 
   return (
     <section
@@ -32,12 +25,11 @@ export function ReferralPublicationBoostCta({ user }: Props) {
           </span>
           <div className="min-w-0 space-y-1">
             <h3 id="referral-boost-heading" className="text-base font-bold tracking-tight text-foreground">
-              ¿Quieres más cupos para publicar?
+              Impulsa tus destacadas con referidos
             </h3>
             <p className="text-sm leading-relaxed text-muted">
-              Puedes ganar hasta{" "}
-              <strong className="font-semibold text-foreground">{REFERRAL_EXTRA_PUBLICATIONS_CAP}</strong>{" "}
-              publicaciones activas extra invitando perfiles nuevos con tu enlace de referido.
+              Cada referido te habilita 1 publicación destacada activa para ganar visibilidad en la
+              parte superior del home.
             </p>
           </div>
         </div>
@@ -51,16 +43,16 @@ export function ReferralPublicationBoostCta({ user }: Props) {
 
       <div className="mt-5 space-y-2 border-t border-primary/15 pt-4">
         <div className="flex items-center justify-between gap-2 text-xs text-muted">
-          <span className="font-medium text-foreground">Cupos extra ganados por referidos</span>
+          <span className="font-medium text-foreground">Destacadas activas en uso</span>
           <span className="shrink-0 tabular-nums">
-            {counted}/{REFERRAL_EXTRA_PUBLICATIONS_CAP}
+            {featuredUsed}/{featuredMax}
           </span>
         </div>
         <ProgressBar
-          aria-label={`Cupos de publicación extra por referidos: ${counted} de ${REFERRAL_EXTRA_PUBLICATIONS_CAP}`}
+          aria-label={`Destacadas activas: ${featuredUsed} de ${featuredMax}`}
           minValue={0}
-          maxValue={REFERRAL_EXTRA_PUBLICATIONS_CAP}
-          value={counted}
+          maxValue={Math.max(1, featuredMax)}
+          value={Math.min(featuredUsed, Math.max(1, featuredMax))}
           color="default"
           size="sm"
           className="w-full"

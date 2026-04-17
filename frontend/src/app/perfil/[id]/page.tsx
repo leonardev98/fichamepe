@@ -1,18 +1,75 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BriefcaseBusiness, MapPin, ShieldCheck, Star } from "lucide-react";
+import { ReportUserButton } from "@/components/moderation/ReportUserButton";
 import { ServiceCard } from "@/components/cards/ServiceCard";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { fetchPublicProfileById } from "@/lib/api/public-profiles.api";
 import { fetchServicesByProfileId } from "@/lib/api/services.api";
+import { SEO_DEFAULT_OG_IMAGE, SEO_SITE_NAME, truncateText } from "@/lib/seo";
+
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export const revalidate = 60 * 60 * 24;
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const profile = await fetchPublicProfileById(id).catch(() => null);
+  if (!profile) {
+    return {
+      title: "Perfil no disponible",
+      description: "Este perfil ya no está disponible en FichaMePe.",
+      alternates: { canonical: `/perfil/${id}` },
+      robots: { index: false, follow: false },
+    };
+  }
+  const skillNames = profile.skills.slice(0, 5).map((skill) => skill.name);
+  const description = truncateText(
+    profile.bio ??
+      `${profile.displayName} publica servicios freelance en FichaMePe${
+        profile.district ? ` desde ${profile.district}` : ""
+      }.`,
+    160,
+  );
+
+  return {
+    title: `${profile.displayName}${profile.district ? ` en ${profile.district}` : ""}`,
+    description,
+    keywords: ["perfil freelance", ...skillNames, profile.district ?? "lima"],
+    alternates: { canonical: `/perfil/${profile.id}` },
+    openGraph: {
+      type: "profile",
+      locale: "es_PE",
+      siteName: SEO_SITE_NAME,
+      title: `${profile.displayName} | ${SEO_SITE_NAME}`,
+      description,
+      url: `/perfil/${profile.id}`,
+      images: [
+        {
+          url: profile.avatarUrl ?? SEO_DEFAULT_OG_IMAGE,
+          width: 1200,
+          height: 630,
+          alt: profile.displayName,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${profile.displayName} | ${SEO_SITE_NAME}`,
+      description,
+      images: [profile.avatarUrl ?? SEO_DEFAULT_OG_IMAGE],
+    },
+  };
+}
 
 export default async function PerfilPage({
   params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+}: PageProps) {
   const { id } = await params;
 
   const profile = await fetchPublicProfileById(id).catch(() => null);
@@ -22,8 +79,32 @@ export default async function PerfilPage({
     notFound();
   }
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    url: `https://fichame.pe/perfil/${profile.id}`,
+    mainEntity: {
+      "@type": "Person",
+      name: profile.displayName,
+      description: profile.bio ?? undefined,
+      image: profile.avatarUrl ?? undefined,
+      address: profile.district
+        ? {
+            "@type": "PostalAddress",
+            addressLocality: profile.district,
+            addressCountry: "PE",
+          }
+        : undefined,
+      knowsAbout: profile.skills.map((skill) => skill.name),
+    },
+  };
+
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-10">
         <section className="overflow-hidden rounded-3xl border border-border bg-white">
@@ -72,12 +153,15 @@ export default async function PerfilPage({
                   </p>
                 </div>
               </div>
-              <Link
-                href="/explorar"
-                className="inline-flex w-full items-center justify-center rounded-full border border-primary px-4 py-2 text-sm font-semibold text-primary no-underline transition hover:bg-primary/5 sm:w-auto"
-              >
-                Explorar más servicios
-              </Link>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+                <Link
+                  href="/explorar"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-primary px-4 py-2 text-sm font-semibold text-primary no-underline transition hover:bg-primary/5 sm:w-auto"
+                >
+                  Explorar más servicios
+                </Link>
+                <ReportUserButton reportedUserId={profile.userId} displayName={profile.displayName} />
+              </div>
             </div>
 
             {profile.bio ? <p className="mt-5 text-sm leading-relaxed text-muted">{profile.bio}</p> : null}

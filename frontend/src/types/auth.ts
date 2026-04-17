@@ -4,6 +4,7 @@ export type AuthUser = {
   id: string;
   email: string;
   fullName: string | null;
+  countryCode: string | null;
   /** Foto pública del perfil (misma URL que en S3); null si no hay perfil o sin avatar. */
   avatarUrl: string | null;
   role: UserRole;
@@ -24,6 +25,10 @@ export type AuthUser = {
   /** null = sin tope práctico (admin / cuenta exenta). Mismo valor que publicationActiveMax si aplica. */
   publicationMax: number | null;
   isPublicationExempt: boolean;
+  /** Destacadas activas en este momento. */
+  featuredActiveCount: number;
+  /** Cupos de destacadas por referidos directos (1:1). */
+  featuredActiveMax: number;
   /** Cuántas personas se registraron con tu código (informativo). */
   referralDirectCount: number;
   /** Cupos ganados por referidos (el tope aplicado en servidor es 3). */

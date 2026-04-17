@@ -2,6 +2,8 @@ import "server-only";
 
 import type { PublicProfile } from "@/types/profile.types";
 
+const SEO_REVALIDATE_SECONDS = 60 * 60 * 24;
+
 type PublicProfileApiRow = {
   id: string;
   userId: string;
@@ -58,7 +60,10 @@ export async function fetchPublicProfileById(profileId: string): Promise<PublicP
   const base = getApiBaseUrl();
   const url = `${base}/profiles/${encodeURIComponent(profileId)}`;
   const res = await fetch(url, {
-    next: { revalidate: 0 },
+    next: {
+      revalidate: SEO_REVALIDATE_SECONDS,
+      tags: [`profile:${profileId}`, "profiles:public"],
+    },
     signal: AbortSignal.timeout(8000),
   });
 

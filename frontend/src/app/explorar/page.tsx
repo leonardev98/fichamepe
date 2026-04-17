@@ -31,6 +31,7 @@ import {
   serviceMatchesMacroSlug,
 } from "@/lib/service-macro-category";
 import type { ServicePublic } from "@/types/service.types";
+import { useCountryStore } from "@/stores/countryStore";
 
 const MACRO_SLUG_SET = new Set<string>(
   HOME_MACRO_CATEGORIES.map((c) => c.slug),
@@ -213,6 +214,7 @@ function FiltersContent({
 
 export default function ExplorarPage() {
   const searchParams = useSearchParams();
+  const countryCode = useCountryStore((s) => s.countryCode);
   const [skillsGrouped, setSkillsGrouped] = useState<SkillsGroupedByCategory>(
     [],
   );
@@ -333,6 +335,7 @@ export default function ExplorarPage() {
           offset: nextOffset,
           orderBy: "random",
           search: debouncedSearch || undefined,
+          country: countryCode ?? undefined,
         });
         setServices((prev) => {
           if (!append) return dedupeServicesById(res.services);
@@ -355,13 +358,13 @@ export default function ExplorarPage() {
         setIsLoadingMore(false);
       }
     },
-    [debouncedSearch],
+    [countryCode, debouncedSearch],
   );
 
   useEffect(() => {
     setOffset(0);
     void loadServices(false, 0);
-  }, [debouncedSearch, loadServices]);
+  }, [countryCode, debouncedSearch, loadServices]);
 
   const canLoadMore = feedHasMore && !error;
   const markerRef = useInfiniteScroll({

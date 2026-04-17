@@ -27,6 +27,7 @@ function toDomain(row: ServiceOrmEntity, withProfile: boolean): Service {
   s.promoEndsAt = row.promoEndsAt ?? null;
   s.currency = row.currency;
   s.coverImageUrl = row.coverImageUrl;
+  s.isFeatured = !!row.isFeatured;
   s.status = row.status;
   s.isActive = row.status === 'ACTIVA';
   s.viewCount = row.viewCount;
@@ -65,6 +66,7 @@ export class ServiceTypeOrmRepository implements IServiceRepository {
   ): Promise<{ services: Service[]; total: number }> {
     const baseQb = this.repo
       .createQueryBuilder('svc')
+      .leftJoin('svc.owner', 'owner')
       .where('svc.status = :status', { status: 'ACTIVA' });
 
     const search = options.search?.trim();
@@ -94,17 +96,32 @@ export class ServiceTypeOrmRepository implements IServiceRepository {
       );
     }
 
+    const country = options.country?.trim().toUpperCase();
+    if (country) {
+      baseQb.andWhere(
+        new Brackets((sub) => {
+          sub
+            .where('owner.countryCode = :country', { country })
+            .orWhere('owner.countryCode IS NULL');
+        }),
+      );
+    }
+    if (options.featuredOnly) {
+      baseQb.andWhere('svc.isFeatured = true');
+    }
+
     const total = await baseQb.clone().getCount();
 
     const idsQb = baseQb.clone().select('svc.id', 'id');
     if (options.orderBy === 'recent') {
-      idsQb.orderBy('svc.createdAt', 'DESC');
+      idsQb.orderBy('svc.isFeatured', 'DESC').addOrderBy('svc.createdAt', 'DESC');
     } else if (options.orderBy === 'popular') {
       idsQb
-        .orderBy('svc.viewCount', 'DESC')
+        .orderBy('svc.isFeatured', 'DESC')
+        .addOrderBy('svc.viewCount', 'DESC')
         .addOrderBy('svc.createdAt', 'DESC');
     } else {
-      idsQb.orderBy('RANDOM()');
+      idsQb.orderBy('svc.isFeatured', 'DESC').addOrderBy('RANDOM()');
     }
     idsQb.skip(options.offset).take(options.limit);
 
@@ -199,6 +216,7 @@ export class ServiceTypeOrmRepository implements IServiceRepository {
       promoEndsAt: data.promoEndsAt ?? null,
       currency: data.currency ?? 'PEN',
       coverImageUrl: data.coverImageUrl ?? null,
+      isFeatured: data.isFeatured ?? false,
       status: data.status ?? 'BORRADOR',
       viewCount: data.viewCount ?? 0,
       reviewCount: data.reviewCount ?? 0,
@@ -251,6 +269,9 @@ export class ServiceTypeOrmRepository implements IServiceRepository {
     }
     if (data.coverImageUrl !== undefined) {
       row.coverImageUrl = data.coverImageUrl;
+    }
+    if (data.isFeatured !== undefined) {
+      row.isFeatured = data.isFeatured;
     }
     if (data.status !== undefined) {
       row.status = data.status;
@@ -314,6 +335,21 @@ export class ServiceTypeOrmRepository implements IServiceRepository {
     return this.repo.count({
       where: { profile: { id: profileId }, status: 'ACTIVA' },
     });
+  }
+
+  async countActiveFeaturedByProfileId(
+    profileId: string,
+    excludingServiceId?: string,
+  ): Promise<number> {
+    const qb = this.repo
+      .createQueryBuilder('svc')
+      .where('svc.profileId = :profileId', { profileId })
+      .andWhere('svc.status = :status', { status: 'ACTIVA' })
+      .andWhere('svc.isFeatured = true');
+    if (excludingServiceId) {
+      qb.andWhere('svc.id <> :excludingServiceId', { excludingServiceId });
+    }
+    return qb.getCount();
   }
 
   async findActiveServiceIdsByProfileIdOrderedForReconciliation(

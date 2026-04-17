@@ -12,6 +12,7 @@ export type SkillWizardFormData = {
   /** Precio habitual (tachado) si hay oferta temporal. */
   listPrice: string;
   promoEnabled: boolean;
+  featuredEnabled: boolean;
   /** Valor para `datetime-local` (zona local). */
   promoEndsAtLocal: string;
   deliveryTime: string;
@@ -19,7 +20,6 @@ export type SkillWizardFormData = {
   coverImageUrl: string | null;
   coverImageKey: string | null;
   coverImageName: string | null;
-  publishAsDraft: boolean;
 };
 
 export type SkillWizardErrors = Partial<Record<keyof SkillWizardFormData, string>>;
@@ -33,13 +33,13 @@ export const EMPTY_SKILL_FORM_DATA: SkillWizardFormData = {
   price: "",
   listPrice: "",
   promoEnabled: false,
+  featuredEnabled: false,
   promoEndsAtLocal: "",
   deliveryTime: "",
   revisionsIncluded: "0",
   coverImageUrl: null,
   coverImageKey: null,
   coverImageName: null,
-  publishAsDraft: false,
 };
 
 export function fromServiceToWizardData(service: ServicePublic): SkillWizardFormData {
@@ -57,18 +57,14 @@ export function fromServiceToWizardData(service: ServicePublic): SkillWizardForm
         ? String(service.previousPrice)
         : "",
     promoEnabled: hasPromoFields,
+    featuredEnabled: service.isFeatured ?? false,
     promoEndsAtLocal: isoToDatetimeLocalValue(service.flashDealEndsAt ?? undefined),
     deliveryTime: service.deliveryTime ?? "",
     revisionsIncluded: service.revisionsIncluded ?? "0",
     coverImageUrl: service.coverImageUrl ?? null,
     coverImageKey: null,
     coverImageName: null,
-    publishAsDraft: service.status === "BORRADOR",
   };
-}
-
-export function wizardStatusFromDraftToggle(isDraft: boolean) {
-  return isDraft ? "BORRADOR" : "EN_REVISION";
 }
 
 export const DEFAULT_STATUS = DEFAULT_WIZARD_STATUS;

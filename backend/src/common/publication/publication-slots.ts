@@ -1,20 +1,20 @@
 import type { User } from '../../users/domain/entities/user';
 import { UserRole } from '../../users/domain/entities/user';
 
-/** Publicaciones simultáneamente ACTIVAS en plan gratuito (sin contar referidos/compras/migración). */
-export const PUBLICATION_BASE_LIMIT = 3;
+/** Publicaciones ilimitadas para todos los usuarios. */
+export const PUBLICATION_BASE_LIMIT = 100_000;
 
-/** Máximo de cupos extra que cuentan por programa de referidos (anti-abuso). */
-export const REFERRAL_PUBLICATION_BONUS_CAP = 3;
+/** Compatibilidad legacy: mantener contador de slots sin restringir el producto actual. */
+export const REFERRAL_PUBLICATION_BONUS_CAP = 100_000;
 
-/** Tope de activas que aporta la suscripción Pro (puede subir si el cupo base ya es mayor). */
-export const PRO_ACTIVE_SUBSCRIPTION_FLOOR = 10;
+/** Compatibilidad legacy (sin efecto con publicaciones ilimitadas). */
+export const PRO_ACTIVE_SUBSCRIPTION_FLOOR = 100_000;
 
 /** Tope práctico para admin / correos exentos. */
 export const PUBLICATION_EXEMPT_MAX = 10_000;
 
-/** Límite de filas de servicio por perfil (borradores + todo estado) para cuentas no exentas. */
-export const MAX_SERVICE_RECORDS_NONEXEMPT = 100;
+/** Publicaciones ilimitadas: no aplicar tope de filas por perfil. */
+export const MAX_SERVICE_RECORDS_NONEXEMPT = 100_000;
 
 export function cappedReferralBonusSlots(referralSlotsEarned: number): number {
   return Math.min(
@@ -28,13 +28,8 @@ export function baseActivePublicationMax(params: {
   referralMigrationCredits: number;
   referralSlotsEarned: number;
   purchasedPublicationSlots: number;
-}): number {
-  return (
-    PUBLICATION_BASE_LIMIT +
-    (params.referralMigrationCredits ?? 0) +
-    cappedReferralBonusSlots(params.referralSlotsEarned) +
-    (params.purchasedPublicationSlots ?? 0)
-  );
+}): null {
+  return null;
 }
 
 export function effectiveActivePublicationMax(params: {
@@ -44,24 +39,8 @@ export function effectiveActivePublicationMax(params: {
   purchasedPublicationSlots: number;
   now: Date;
   isPublicationExempt: boolean;
-}): number | null {
-  if (params.isPublicationExempt) {
-    return null;
-  }
-  const base = baseActivePublicationMax({
-    referralMigrationCredits: params.referralMigrationCredits,
-    referralSlotsEarned: params.referralSlotsEarned,
-    purchasedPublicationSlots: params.purchasedPublicationSlots,
-  });
-  const proExpires = params.user.proExpiresAt;
-  const proOk =
-    params.user.isPro &&
-    proExpires != null &&
-    proExpires.getTime() > params.now.getTime();
-  if (proOk) {
-    return Math.max(PRO_ACTIVE_SUBSCRIPTION_FLOOR, base);
-  }
-  return base;
+}): null {
+  return null;
 }
 
 export function isPublicationQuotaExemptUser(

@@ -26,7 +26,7 @@ export class ConversationsController {
 
   @Post()
   create(@CurrentUser() user: RequestUser, @Body() dto: CreateConversationDto) {
-    return this.conversations.createOrGetThread(user.userId, dto.serviceId);
+    return this.conversations.createOrGetThreadUnified(user.userId, dto);
   }
 
   @Get(':conversationId/messages')

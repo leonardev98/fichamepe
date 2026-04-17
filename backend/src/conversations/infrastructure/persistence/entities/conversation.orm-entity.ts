@@ -13,8 +13,11 @@ export class ConversationOrmEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
-  serviceId: string;
+  @Column({ type: 'uuid', nullable: true })
+  serviceId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  clientRequestId: string | null;
 
   @Column({ type: 'uuid' })
   sellerUserId: string;

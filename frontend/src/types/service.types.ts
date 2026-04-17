@@ -31,6 +31,7 @@ export type ServicePublic = {
   previousPrice?: number | null;
   currency: "PEN";
   coverImageUrl: string | null;
+  isFeatured?: boolean;
   status: ServiceStatus;
   isActive: boolean;
   viewCount: number;

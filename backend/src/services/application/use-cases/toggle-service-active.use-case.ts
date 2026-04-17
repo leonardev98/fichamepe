@@ -44,10 +44,13 @@ export class ToggleServiceActiveUseCase {
       if (owner) {
         assertUserEmailVerified(owner);
       }
-      await this.publicationSlots.assertMayActivateOneMore(
+      await this.publicationSlots.assertMayKeepServiceFeatured({
         userId,
-        existing.profileId,
-      );
+        profileId: existing.profileId,
+        serviceId: existing.id,
+        willBeActive: true,
+        isFeatured: existing.isFeatured,
+      });
     }
     const updated = await this.services.update(id, {
       status: existing.status === 'ACTIVA' ? 'PAUSADA' : 'ACTIVA',

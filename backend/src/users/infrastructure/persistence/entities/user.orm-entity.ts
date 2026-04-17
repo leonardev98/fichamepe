@@ -76,6 +76,9 @@ export class UserOrmEntity {
   @Column({ type: 'timestamptz', nullable: true })
   emailVerificationLastSentAt: Date | null;
 
+  @Column({ type: 'char', length: 2, nullable: true })
+  countryCode: string | null;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 

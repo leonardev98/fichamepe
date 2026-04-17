@@ -8,6 +8,7 @@ import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBann
 import { PendingEmailVerificationToast } from "@/components/auth/PendingEmailVerificationToast";
 import { AuthModalsProvider } from "@/components/auth/auth-modals-provider";
 import { SessionBootstrap } from "@/components/SessionBootstrap";
+import { CountryBootstrap } from "@/components/CountryBootstrap";
 import { ChatSocketProvider } from "@/components/conversaciones/ChatSocketProvider";
 
 /**
@@ -56,6 +57,11 @@ export function Providers({ children }: { children: ReactNode }) {
           }
         })
         .join(" ");
+
+    const shouldSilenceLcpImageWarning = (args: unknown[]) => {
+      const serialized = serializeArgs(args);
+      return /Image with src .*Largest Contentful Paint.*loading="eager"/i.test(serialized);
+    };
 
     const sendRuntimeLog = (level: "warn" | "error", args: unknown[]) => {
       const serialized = serializeArgs(args);
@@ -136,12 +142,18 @@ export function Providers({ children }: { children: ReactNode }) {
     };
 
     console.warn = (...args: unknown[]) => {
+      if (shouldSilenceLcpImageWarning(args)) {
+        return;
+      }
       sendRuntimeLog("warn", args);
       sendA11yLabelLog("warn", args);
       originalWarn(...args);
     };
 
     console.error = (...args: unknown[]) => {
+      if (shouldSilenceLcpImageWarning(args)) {
+        return;
+      }
       sendRuntimeLog("error", args);
       sendA11yLabelLog("error", args);
       originalError(...args);
@@ -158,6 +170,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <EmailVerificationBanner />
       <PendingEmailVerificationToast />
       <SessionBootstrap />
+      <CountryBootstrap />
       <ChatSocketProvider />
       <ServiceWorkerRegister />
       <AuthModalsProvider>{children}</AuthModalsProvider>

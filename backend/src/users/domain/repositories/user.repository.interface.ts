@@ -8,6 +8,7 @@ export interface CreateUserData {
   fullName?: string | null;
   role?: UserRole;
   referredByUserId?: string | null;
+  countryCode?: string | null;
   /** Si true, marca el correo como verificado al crear (p. ej. OAuth Google). */
   markEmailVerified?: boolean;
 }
@@ -23,6 +24,7 @@ export type UserUpdatePatch = Partial<
     | 'tokenBalance'
     | 'role'
     | 'googleId'
+    | 'countryCode'
   >
 >;
 
@@ -32,10 +34,17 @@ export interface IUserRepository {
   findById(id: string): Promise<User | null>;
   findByReferralCode(code: string): Promise<User | null>;
   countUsersReferredBy(referrerUserId: string): Promise<number>;
+  /** Usuarios que registraron con este referidor (orden por alta, más antiguos primero). */
+  findReferredUsersByReferrerId(
+    referrerUserId: string,
+  ): Promise<Array<{ id: string; fullName: string | null; createdAt: Date }>>;
   /**
    * Asigna referidor solo si aún no tenía uno. Devuelve true si se actualizó.
    */
-  applyReferredByIfEmpty(userId: string, referrerUserId: string): Promise<boolean>;
+  applyReferredByIfEmpty(
+    userId: string,
+    referrerUserId: string,
+  ): Promise<boolean>;
   create(data: CreateUserData): Promise<User>;
   update(id: string, patch: UserUpdatePatch): Promise<User | null>;
   /** Devuelve true si existía un usuario con ese correo. */
@@ -45,7 +54,10 @@ export interface IUserRepository {
     expires: Date,
   ): Promise<boolean>;
   /** Actualiza contraseña y borra token si el token es válido y no ha expirado. */
-  consumePasswordReset(token: string, newPasswordHash: string): Promise<boolean>;
+  consumePasswordReset(
+    token: string,
+    newPasswordHash: string,
+  ): Promise<boolean>;
 
   setEmailVerificationByUserId(
     userId: string,
@@ -66,5 +78,8 @@ export interface IUserRepository {
   ): Promise<void>;
 
   /** Suma slots comprados cumplidos al usuario. */
-  incrementPurchasedPublicationSlots(userId: string, delta: number): Promise<void>;
+  incrementPurchasedPublicationSlots(
+    userId: string,
+    delta: number,
+  ): Promise<void>;
 }

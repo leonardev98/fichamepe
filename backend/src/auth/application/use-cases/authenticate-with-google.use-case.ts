@@ -22,6 +22,7 @@ export type AuthenticateWithGoogleInput = {
   googleId: string;
   email: string;
   fullName: string | null;
+  countryCode?: string | null;
   state: GoogleOAuthStatePayload;
 };
 
@@ -45,7 +46,7 @@ export class AuthenticateWithGoogleUseCase {
   async execute(
     input: AuthenticateWithGoogleInput,
   ): Promise<AuthenticateWithGoogleResult> {
-    const { googleId, email, fullName, state } = input;
+    const { googleId, email, fullName, countryCode, state } = input;
     const redirectPath =
       state.from?.startsWith('/') && !state.from.startsWith('//')
         ? state.from
@@ -103,6 +104,7 @@ export class AuthenticateWithGoogleUseCase {
         fullName,
         role,
         referredByUserId,
+        countryCode: countryCode ?? null,
         markEmailVerified: true,
       });
       if (referredByUserId) {

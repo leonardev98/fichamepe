@@ -134,6 +134,8 @@ export async function bootstrapSessionFromCookies(): Promise<boolean> {
         publicationBaseActiveMax: user.publicationBaseActiveMax ?? null,
         publicationMax: user.publicationMax ?? null,
         isPublicationExempt: user.isPublicationExempt ?? false,
+        featuredActiveCount: user.featuredActiveCount ?? 0,
+        featuredActiveMax: user.featuredActiveMax ?? user.referralDirectCount ?? 0,
         referralDirectCount: user.referralDirectCount ?? 0,
         referralSlotsEarned: user.referralSlotsEarned ?? 0,
         purchasedPublicationSlots: user.purchasedPublicationSlots ?? 0,

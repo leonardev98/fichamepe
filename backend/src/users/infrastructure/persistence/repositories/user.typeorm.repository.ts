@@ -32,6 +32,7 @@ function toDomain(row: UserOrmEntity): User {
   u.referralSlotsEarned = row.referralSlotsEarned ?? 0;
   u.purchasedPublicationSlots = row.purchasedPublicationSlots ?? 0;
   u.emailVerifiedAt = row.emailVerifiedAt ?? null;
+  u.countryCode = row.countryCode ?? null;
   u.createdAt = row.createdAt;
   u.updatedAt = row.updatedAt;
   return u;
@@ -77,6 +78,22 @@ export class UserTypeOrmRepository implements IUserRepository {
     });
   }
 
+  async findReferredUsersByReferrerId(
+    referrerUserId: string,
+  ): Promise<Array<{ id: string; fullName: string | null; createdAt: Date }>> {
+    const rows = await this.repo.find({
+      where: { referredByUserId: referrerUserId },
+      select: ['id', 'fullName', 'createdAt'],
+      order: { createdAt: 'ASC' },
+      take: 50,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      fullName: r.fullName ?? null,
+      createdAt: r.createdAt,
+    }));
+  }
+
   async applyReferredByIfEmpty(
     userId: string,
     referrerUserId: string,
@@ -109,10 +126,9 @@ export class UserTypeOrmRepository implements IUserRepository {
       role: data.role ?? UserRole.Freelancer,
       referralCode,
       referredByUserId: data.referredByUserId ?? null,
+      countryCode: data.countryCode ?? null,
       referralMigrationCredits: 0,
-      ...(data.markEmailVerified
-        ? { emailVerifiedAt: new Date() }
-        : {}),
+      ...(data.markEmailVerified ? { emailVerifiedAt: new Date() } : {}),
     });
     const saved = await this.repo.save(row);
     return toDomain(saved);
@@ -155,6 +171,9 @@ export class UserTypeOrmRepository implements IUserRepository {
     }
     if (patch.googleId !== undefined) {
       row.googleId = patch.googleId;
+    }
+    if (patch.countryCode !== undefined) {
+      row.countryCode = patch.countryCode;
     }
     const saved = await this.repo.save(row);
     return toDomain(saved);

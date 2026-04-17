@@ -78,10 +78,13 @@ export class SetServiceStatusUseCase {
           'Solo puedes reactivar publicaciones pausadas',
         );
       }
-      await this.publicationSlots.assertMayActivateOneMore(
+      await this.publicationSlots.assertMayKeepServiceFeatured({
         userId,
-        existing.profileId,
-      );
+        profileId: existing.profileId,
+        serviceId: existing.id,
+        willBeActive: true,
+        isFeatured: existing.isFeatured,
+      });
     } else if (status === 'BORRADOR') {
       if (existing.status === 'ACTIVA') {
         throw new BadRequestException(

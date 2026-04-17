@@ -19,6 +19,9 @@ export function SessionBootstrap() {
       void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
         void useConversationsStore.getState().syncFromApi();
       });
+      void import("@/stores/notificationsStore").then(({ useNotificationsStore }) => {
+        void useNotificationsStore.getState().syncFromApi();
+      });
       markBootstrapDone();
       return;
     }
@@ -35,6 +38,9 @@ export function SessionBootstrap() {
         });
         void import("@/stores/conversationsStore").then(({ useConversationsStore }) => {
           void useConversationsStore.getState().syncFromApi();
+        });
+        void import("@/stores/notificationsStore").then(({ useNotificationsStore }) => {
+          void useNotificationsStore.getState().syncFromApi();
         });
       })
       .finally(markBootstrapDone);

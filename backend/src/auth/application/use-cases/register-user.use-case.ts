@@ -26,6 +26,10 @@ export interface RegisterUserResult extends AuthTokens {
   user: AuthenticatedUserResponse;
 }
 
+type RegisterUserContext = {
+  countryCode?: string | null;
+};
+
 @Injectable()
 export class RegisterUserUseCase {
   private readonly logger = new Logger(RegisterUserUseCase.name);
@@ -39,7 +43,10 @@ export class RegisterUserUseCase {
     private readonly verificationMail: VerificationMailService,
   ) {}
 
-  async execute(dto: RegisterDto): Promise<RegisterUserResult> {
+  async execute(
+    dto: RegisterDto,
+    context: RegisterUserContext = {},
+  ): Promise<RegisterUserResult> {
     const existing = await this.users.findByEmail(dto.email);
     if (existing) {
       throw new ConflictException('El correo ya está registrado');
@@ -53,7 +60,9 @@ export class RegisterUserUseCase {
       }
       const emailNorm = dto.email.trim().toLowerCase();
       if (referrer.email === emailNorm) {
-        throw new BadRequestException('No puedes usar un código asociado a tu mismo correo');
+        throw new BadRequestException(
+          'No puedes usar un código asociado a tu mismo correo',
+        );
       }
       referredByUserId = referrer.id;
     }
@@ -64,6 +73,7 @@ export class RegisterUserUseCase {
       fullName: dto.fullName?.trim() ? dto.fullName.trim() : null,
       role: dto.role,
       referredByUserId,
+      countryCode: context.countryCode ?? null,
     });
     if (referredByUserId) {
       await this.users.incrementReferralSlotsEarnedCapped(

@@ -20,6 +20,10 @@ function roomForConversation(conversationId: string): string {
   return `conv:${conversationId}`;
 }
 
+function roomForUser(userId: string): string {
+  return `user:${userId}`;
+}
+
 @UsePipes(
   new ValidationPipe({
     whitelist: true,
@@ -59,7 +63,9 @@ export class ChatGateway implements OnGatewayConnection {
         client.disconnect(true);
         return;
       }
-      client.data.userId = payload.userId;
+      const uid = payload.userId;
+      client.data.userId = uid;
+      void client.join(roomForUser(uid));
     } catch {
       client.disconnect(true);
     }
@@ -108,6 +114,19 @@ export class ChatGateway implements OnGatewayConnection {
     },
   ): void {
     this.server.to(roomForConversation(conversationId)).emit('message:new', payload);
+  }
+
+  emitNotificationToUser(
+    userId: string,
+    payload: {
+      id: string;
+      type: string;
+      title: string;
+      createdAt: string;
+      unreadCount: number;
+    },
+  ): void {
+    this.server.to(roomForUser(userId)).emit('notification:new', payload);
   }
 
   private extractAccessToken(client: Socket): string | null {

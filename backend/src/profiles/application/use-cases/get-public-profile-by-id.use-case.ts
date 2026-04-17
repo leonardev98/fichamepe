@@ -1,4 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { USER_REPOSITORY } from '../../../users/users.di-tokens';
+import type { IUserRepository } from '../../../users/domain/repositories/user.repository.interface';
 import { PROFILE_REPOSITORY } from '../../profiles.di-tokens';
 import type { IProfileRepository } from '../../domain/repositories';
 
@@ -24,11 +26,17 @@ export class GetPublicProfileByIdUseCase {
   constructor(
     @Inject(PROFILE_REPOSITORY)
     private readonly profiles: IProfileRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly users: IUserRepository,
   ) {}
 
   async execute(profileId: string): Promise<PublicProfileResponse> {
     const profile = await this.profiles.findById(profileId);
     if (!profile) {
+      throw new NotFoundException('Perfil no encontrado');
+    }
+    const owner = await this.users.findById(profile.userId);
+    if (!owner?.isActive) {
       throw new NotFoundException('Perfil no encontrado');
     }
 

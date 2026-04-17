@@ -16,17 +16,25 @@ export function AuthModalsProvider({ children }: { children: ReactNode }) {
     "client" | "freelancer" | null
   >(null);
   const [registerReferralCode, setRegisterReferralCode] = useState<string | null>(null);
+  const [afterLoginHref, setAfterLoginHref] = useState<string | null>(null);
 
   const clearRegisterExtras = useCallback(() => {
     setRegisterInitialRole(null);
     setRegisterReferralCode(null);
   }, []);
 
-  const openLogin = useCallback(() => {
-    registerState.close();
-    forgotPasswordState.close();
-    loginState.open();
-  }, [loginState, registerState, forgotPasswordState]);
+  const openLogin = useCallback(
+    (opts?: { afterLoginHref?: string }) => {
+      const raw = opts?.afterLoginHref?.trim();
+      const next =
+        raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+      setAfterLoginHref(next);
+      registerState.close();
+      forgotPasswordState.close();
+      loginState.open();
+    },
+    [loginState, registerState, forgotPasswordState],
+  );
 
   const openRegister = useCallback(
     (opts?: { role?: "client" | "freelancer"; referralCode?: string | null }) => {
@@ -62,7 +70,7 @@ export function AuthModalsProvider({ children }: { children: ReactNode }) {
       ) : null}
       {loginState.isOpen ? (
         <Suspense fallback={null}>
-          <LoginModal state={loginState} />
+          <LoginModal state={loginState} afterLoginHref={afterLoginHref} />
         </Suspense>
       ) : null}
       {registerState.isOpen ? (

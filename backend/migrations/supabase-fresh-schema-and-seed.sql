@@ -7,9 +7,14 @@ BEGIN;
 -- ---------------------------------------------------------------------------
 -- LIMPIEZA (orden: hijos primero por FK)
 -- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS "notification" CASCADE;
+DROP TABLE IF EXISTS "moderation_report" CASCADE;
 DROP TABLE IF EXISTS "publication_slot_purchase" CASCADE;
 DROP TABLE IF EXISTS "token_transactions" CASCADE;
 DROP TABLE IF EXISTS "subscriptions" CASCADE;
+DROP TABLE IF EXISTS "client_request_comment" CASCADE;
+DROP TABLE IF EXISTS "client_request_application" CASCADE;
+DROP TABLE IF EXISTS "client_request" CASCADE;
 DROP TABLE IF EXISTS "conversation_message" CASCADE;
 DROP TABLE IF EXISTS "conversation" CASCADE;
 DROP TABLE IF EXISTS "service_review" CASCADE;
@@ -45,12 +50,15 @@ CREATE TABLE "user" (
   "referralMigrationCredits" integer NOT NULL DEFAULT 0,
   "referralSlotsEarned" integer NOT NULL DEFAULT 0,
   "purchasedPublicationSlots" integer NOT NULL DEFAULT 0,
+  "countryCode" char(2),
   "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
   CONSTRAINT "PK_user" PRIMARY KEY ("id"),
   CONSTRAINT "UQ_user_email" UNIQUE ("email"),
   CONSTRAINT "UQ_user_googleId" UNIQUE ("googleId"),
   CONSTRAINT "UQ_user_referralCode" UNIQUE ("referralCode"),
+  CONSTRAINT "CHK_user_countryCode_format"
+    CHECK ("countryCode" IS NULL OR "countryCode" ~ '^[A-Z]{2}$'),
   CONSTRAINT "FK_user_referredByUser" FOREIGN KEY ("referredByUserId") REFERENCES "user"("id") ON DELETE SET NULL
 );
 
@@ -96,6 +104,7 @@ CREATE TABLE "service" (
   "price" numeric(10, 2),
   "currency" character varying(3) NOT NULL DEFAULT 'PEN',
   "coverImageUrl" character varying,
+  "isFeatured" boolean NOT NULL DEFAULT false,
   "status" character varying(16) NOT NULL DEFAULT 'BORRADOR',
   "viewCount" integer NOT NULL DEFAULT 0,
   "tags" text,
@@ -117,6 +126,7 @@ CREATE TABLE "service" (
 );
 
 CREATE INDEX "IDX_service_status" ON "service" ("status");
+CREATE INDEX "IDX_service_is_featured" ON "service" ("isFeatured");
 CREATE INDEX "IDX_service_view_count" ON "service" ("viewCount");
 CREATE INDEX "IDX_service_created_at" ON "service" ("createdAt");
 
@@ -140,19 +150,76 @@ CREATE TABLE "publication_slot_purchase" (
 CREATE INDEX "IDX_publication_slot_purchase_userId" ON "publication_slot_purchase" ("userId");
 CREATE INDEX "IDX_publication_slot_purchase_status" ON "publication_slot_purchase" ("status");
 
+CREATE TABLE "client_request" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "userId" uuid NOT NULL,
+  "title" character varying(200) NOT NULL,
+  "detail" text,
+  "budget" character varying(120) NOT NULL,
+  "status" character varying(16) NOT NULL DEFAULT 'EN_REVISION',
+  "submittedAt" timestamptz,
+  "reviewedAt" timestamptz,
+  "reviewedByUserId" uuid,
+  "moderationComment" text,
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  "updatedAt" timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT "PK_client_request" PRIMARY KEY ("id"),
+  CONSTRAINT "FK_client_request_user" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE,
+  CONSTRAINT "FK_client_request_reviewed_by" FOREIGN KEY ("reviewedByUserId") REFERENCES "user"("id") ON DELETE SET NULL
+);
+
+CREATE INDEX "IDX_client_request_status_created" ON "client_request" ("status", "createdAt" DESC);
+
+CREATE TABLE "client_request_application" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "requestId" uuid NOT NULL,
+  "applicantUserId" uuid NOT NULL,
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT "PK_client_request_application" PRIMARY KEY ("id"),
+  CONSTRAINT "FK_cra_request" FOREIGN KEY ("requestId") REFERENCES "client_request"("id") ON DELETE CASCADE,
+  CONSTRAINT "FK_cra_applicant" FOREIGN KEY ("applicantUserId") REFERENCES "user"("id") ON DELETE CASCADE,
+  CONSTRAINT "UQ_cra_request_applicant" UNIQUE ("requestId", "applicantUserId")
+);
+
+CREATE INDEX "IDX_cra_request" ON "client_request_application" ("requestId");
+
+CREATE TABLE "client_request_comment" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "clientRequestId" uuid NOT NULL,
+  "userId" uuid NOT NULL,
+  "body" text NOT NULL,
+  "moderationHiddenAt" timestamptz,
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT "PK_client_request_comment" PRIMARY KEY ("id"),
+  CONSTRAINT "FK_crc_request" FOREIGN KEY ("clientRequestId") REFERENCES "client_request"("id") ON DELETE CASCADE,
+  CONSTRAINT "FK_crc_user" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE
+);
+
+CREATE INDEX "IDX_crc_request_created" ON "client_request_comment" ("clientRequestId", "createdAt" DESC);
+
 CREATE TABLE "conversation" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-  "serviceId" uuid NOT NULL,
+  "serviceId" uuid,
+  "clientRequestId" uuid,
   "sellerUserId" uuid NOT NULL,
   "buyerUserId" uuid NOT NULL,
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT "PK_conversation" PRIMARY KEY ("id"),
   CONSTRAINT "FK_conversation_service" FOREIGN KEY ("serviceId") REFERENCES "service"("id") ON DELETE CASCADE,
+  CONSTRAINT "FK_conversation_client_request" FOREIGN KEY ("clientRequestId") REFERENCES "client_request"("id") ON DELETE CASCADE,
   CONSTRAINT "FK_conversation_seller" FOREIGN KEY ("sellerUserId") REFERENCES "user"("id") ON DELETE CASCADE,
   CONSTRAINT "FK_conversation_buyer" FOREIGN KEY ("buyerUserId") REFERENCES "user"("id") ON DELETE CASCADE,
-  CONSTRAINT "UQ_conversation_service_buyer" UNIQUE ("serviceId", "buyerUserId")
+  CONSTRAINT "CHK_conversation_service_xor_request" CHECK (
+    ("serviceId" IS NOT NULL AND "clientRequestId" IS NULL)
+    OR ("serviceId" IS NULL AND "clientRequestId" IS NOT NULL)
+  )
 );
+
+CREATE UNIQUE INDEX "UQ_conversation_service_buyer" ON "conversation" ("serviceId", "buyerUserId")
+  WHERE "serviceId" IS NOT NULL;
+CREATE UNIQUE INDEX "UQ_conversation_client_request_buyer" ON "conversation" ("clientRequestId", "buyerUserId")
+  WHERE "clientRequestId" IS NOT NULL;
 
 CREATE INDEX "IDX_conversation_seller" ON "conversation" ("sellerUserId");
 CREATE INDEX "IDX_conversation_buyer" ON "conversation" ("buyerUserId");
@@ -189,6 +256,28 @@ CREATE TABLE "service_review" (
 
 CREATE INDEX "IDX_service_review_service_created" ON "service_review" ("serviceId", "createdAt" DESC);
 
+CREATE TABLE "moderation_report" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "targetType" character varying(32) NOT NULL,
+  "targetId" uuid NOT NULL,
+  "reporterUserId" uuid NOT NULL,
+  "reason" character varying(40) NOT NULL,
+  "details" character varying(1000),
+  "reviewStatus" character varying(16) NOT NULL DEFAULT 'pending',
+  "reviewedAt" timestamptz,
+  "reviewedByUserId" uuid,
+  "reviewNote" text,
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  "updatedAt" timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT "PK_moderation_report" PRIMARY KEY ("id"),
+  CONSTRAINT "FK_moderation_report_reporter" FOREIGN KEY ("reporterUserId") REFERENCES "user"("id") ON DELETE CASCADE,
+  CONSTRAINT "FK_moderation_report_reviewed_by" FOREIGN KEY ("reviewedByUserId") REFERENCES "user"("id") ON DELETE SET NULL,
+  CONSTRAINT "UQ_moderation_report_reporter_target" UNIQUE ("reporterUserId", "targetType", "targetId")
+);
+
+CREATE INDEX "IDX_moderation_report_status_created" ON "moderation_report" ("reviewStatus", "createdAt" DESC);
+CREATE INDEX "IDX_moderation_report_target" ON "moderation_report" ("targetType", "targetId");
+
 CREATE TABLE "subscriptions" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
   "userId" uuid NOT NULL,
@@ -220,6 +309,27 @@ CREATE TABLE "token_transactions" (
   CONSTRAINT "FK_token_from_user" FOREIGN KEY ("fromUserId") REFERENCES "user"("id") ON DELETE SET NULL,
   CONSTRAINT "FK_token_to_user" FOREIGN KEY ("toUserId") REFERENCES "user"("id") ON DELETE CASCADE
 );
+
+CREATE TABLE "notification" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "userId" uuid NOT NULL,
+  "type" character varying(48) NOT NULL,
+  "title" character varying(200) NOT NULL,
+  "body" text,
+  "linkPath" character varying(512),
+  "readAt" timestamptz,
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT "PK_notification" PRIMARY KEY ("id"),
+  CONSTRAINT "FK_notification_user"
+    FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE
+);
+
+CREATE INDEX "IDX_notification_user_created"
+  ON "notification" ("userId", "createdAt" DESC);
+
+CREATE INDEX "IDX_notification_user_unread"
+  ON "notification" ("userId")
+  WHERE "readAt" IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- DATOS DEMO (usuarios → perfiles → servicios)

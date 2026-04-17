@@ -17,6 +17,7 @@ import {
   type ServiceResponse,
 } from '../mappers/service-response.mapper';
 import { assertTimedPromoValid } from '../service-promo.validation';
+import { PublicationSlotsAvailabilityService } from '../services/publication-slots-availability.service';
 
 @Injectable()
 export class UpdateServiceUseCase {
@@ -25,6 +26,7 @@ export class UpdateServiceUseCase {
     private readonly services: IServiceRepository,
     @Inject(USER_REPOSITORY)
     private readonly users: IUserRepository,
+    private readonly publicationSlots: PublicationSlotsAvailabilityService,
   ) {}
 
   async execute(
@@ -43,6 +45,8 @@ export class UpdateServiceUseCase {
     const nextPrice = dto.price !== undefined ? dto.price : existing.price;
     let nextList = existing.listPrice ?? null;
     let nextPromo = existing.promoEndsAt ?? null;
+    const nextIsFeatured =
+      dto.isFeatured !== undefined ? dto.isFeatured : existing.isFeatured;
     if (dto.listPrice !== undefined) {
       nextList = dto.listPrice;
     }
@@ -125,6 +129,17 @@ export class UpdateServiceUseCase {
       patch.listPrice = nextList;
       patch.promoEndsAt = nextPromo;
     }
+    if (dto.isFeatured !== undefined) {
+      patch.isFeatured = dto.isFeatured;
+    }
+    const nextStatus = patch.status ?? existing.status;
+    await this.publicationSlots.assertMayKeepServiceFeatured({
+      userId,
+      profileId: existing.profileId,
+      serviceId: existing.id,
+      willBeActive: nextStatus === 'ACTIVA',
+      isFeatured: nextIsFeatured,
+    });
     if (patch.status === 'EN_REVISION') {
       const owner = await this.users.findById(userId);
       if (owner) {

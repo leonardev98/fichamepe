@@ -141,6 +141,11 @@ export function ServiceCard({
           </div>
         )}
         <div className="absolute left-2 top-2 z-20 flex max-w-[calc(100%-3.5rem)] flex-wrap items-center gap-1.5">
+          {service.isFeatured ? (
+            <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+              Destacado
+            </span>
+          ) : null}
           {service.badge ? <Badge badge={service.badge} overlay={hasCoverImage} /> : null}
           <CountdownTimer
             endsAt={isActivePromo(service) ? service.flashDealEndsAt : null}

@@ -1,9 +1,10 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
   IsDateString,
   IsIn,
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
@@ -56,6 +57,17 @@ export class CreateServiceBodyDto {
   @IsString()
   @MaxLength(2048)
   coverImageUrl?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' || value === true
+      ? true
+      : value === 'false' || value === false
+        ? false
+        : undefined,
+  )
+  @IsBoolean()
+  isFeatured?: boolean;
 
   @IsArray()
   @ArrayMaxSize(5)

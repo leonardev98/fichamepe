@@ -26,6 +26,8 @@ export class User {
   purchasedPublicationSlots: number;
   /** null = correo aún no verificado (o cuenta antigua sin columna poblada). */
   emailVerifiedAt: Date | null;
+  /** ISO-3166-1 alpha-2 del país preferente/detectado del usuario. */
+  countryCode: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

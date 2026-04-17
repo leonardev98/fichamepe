@@ -1,148 +1,161 @@
 import Link from "next/link";
-import { Globe, MessageCircle, Send, Sparkles } from "lucide-react";
+import {
+  ArrowUpRight,
+  Globe,
+  MessageCircle,
+  Send,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { FooterRegisterFreelancerButton } from "@/components/layout/FooterRegisterFreelancerButton";
-import { SITE_TAGLINES } from "@/lib/constants";
 
 const linkClass =
-  "text-sm text-[rgba(255,255,255,0.55)] transition-colors hover:text-[rgba(255,255,255,0.9)]";
+  "text-sm text-white/70 transition-colors hover:text-white";
+
+const clientLinks = [
+  { href: "/explorar", label: "Explorar servicios" },
+  { href: "/como-funciona", label: "Cómo funciona" },
+  { href: "/preguntas-frecuentes", label: "Centro de ayuda" },
+];
+
+const freelancerLinks = [
+  { href: "/para-freelancers", label: "Vender en fichame.pe" },
+  { href: "/planes-pro", label: "Planes Pro" },
+  { href: "/consejos", label: "Consejos prácticos" },
+];
+
+const companyLinks = [
+  { href: "/sobre-nosotros", label: "Sobre nosotros" },
+  { href: "/contacto", label: "Contacto" },
+  { href: "/blog", label: "Blog" },
+];
+
+const legalLinks = [
+  { href: "/terminos", label: "Términos" },
+  { href: "/privacidad", label: "Privacidad" },
+];
+
+const communityLinks = [
+  { id: "web", Icon: Globe, label: "Sitio", href: "/" },
+  { id: "chat", Icon: MessageCircle, label: "Contacto", href: "/contacto" },
+  { id: "telegram", Icon: Send, label: "Comunidad", href: "/consejos" },
+  { id: "spark", Icon: Sparkles, label: "Blog", href: "/blog" },
+];
 
 export function Footer() {
+  const currentYear = new Date().getFullYear();
+
   return (
-    <footer className="mt-auto bg-dark text-white">
-      <div className="border-b border-white/10 py-5">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 text-sm font-semibold">
-          <span>+2,500 freelancers</span>
-          <span>+10,000 servicios completados</span>
-          <span>Lima, Peru</span>
-        </div>
-      </div>
-      <div className="mx-auto max-w-6xl px-4 py-12">
-        <p className="mb-10 text-lg font-bold tracking-tight text-white">fichame.pe</p>
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <p className="mb-4 text-sm font-semibold text-white">
-              Para clientes
+    <footer className="mt-auto bg-marketing-deep text-marketing-on">
+      <div className="mx-auto max-w-6xl px-4 pb-7 pt-12 md:pt-14">
+        <div className="grid gap-10 border-b border-white/10 pb-10 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <p className="max-w-md text-sm leading-6 text-marketing-on-muted">
+              Encuentra freelancers verificados en Lima para resolver proyectos reales en minutos.
+              Menos fricción, más resultados.
             </p>
-            <ul className="flex flex-col gap-2.5">
-              <li>
-                <Link href="/explorar" className={linkClass}>
-                  Explorar servicios
-                </Link>
-              </li>
-              <li>
-                <Link href="/como-funciona" className={linkClass}>
-                  Cómo funciona
-                </Link>
-              </li>
-              <li>
-                <Link href="/preguntas-frecuentes" className={linkClass}>
-                  Centro de ayuda
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="mb-4 text-sm font-semibold text-white">
-              Para freelancers
-            </p>
-            <ul className="flex flex-col gap-2.5">
-              <li>
-                <Link href="/para-freelancers" className={linkClass}>
-                  Vender en fichame
-                </Link>
-              </li>
-              <li>
-                <FooterRegisterFreelancerButton className={linkClass} />
-              </li>
-              <li>
-                <Link href="/planes-pro" className={linkClass}>
-                  Planes Pro
-                </Link>
-              </li>
-              <li>
-                <Link href="/consejos" className={linkClass}>
-                  Consejos
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="mb-4 text-sm font-semibold text-white">fichame.pe</p>
-            <ul className="flex flex-col gap-2.5">
-              <li>
-                <Link href="/sobre-nosotros" className={linkClass}>
-                  Sobre nosotros
-                </Link>
-              </li>
-              <li>
-                <Link href="/contacto" className={linkClass}>
-                  Contacto
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className={linkClass}>
-                  Blog
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="mb-4 text-sm font-semibold text-white">Comunidad y legal</p>
-            <ul className="flex flex-col gap-2.5">
-              <li>
-                <Link href="/terminos" className={linkClass}>
-                  Términos
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacidad" className={linkClass}>
-                  Privacidad
-                </Link>
-              </li>
-              <li>
-                <div className="mt-3 flex items-center gap-2">
-                  {[
-                    { id: "web", Icon: Globe },
-                    { id: "chat", Icon: MessageCircle },
-                    { id: "telegram", Icon: Send },
-                    { id: "spark", Icon: Sparkles },
-                  ].map(({ id, Icon }) => (
-                    <span
-                      key={id}
-                      className="inline-flex size-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-white/50 hover:text-white"
-                    >
-                      <Icon className="size-4" aria-hidden />
-                    </span>
-                  ))}
+
+            <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              {[
+                { label: "Freelancers activos", value: "+2,500" },
+                { label: "Servicios completados", value: "+10,000" },
+                { label: "Atención en Perú", value: "24/7" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3"
+                >
+                  <p className="text-base font-semibold text-marketing-on">{item.value}</p>
+                  <p className="mt-0.5 text-xs text-marketing-on-muted">{item.label}</p>
                 </div>
-              </li>
-            </ul>
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <Link
+                href="/explorar"
+                className="inline-flex items-center gap-2 rounded-xl bg-primary-light px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-primary"
+              >
+                Explorar servicios
+                <ArrowUpRight className="size-4" aria-hidden />
+              </Link>
+              <FooterRegisterFreelancerButton className="inline-flex rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-marketing-on transition hover:border-white/40 hover:bg-white/[0.08]" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:col-span-7 lg:grid-cols-3">
+            <div>
+              <p className="mb-4 text-sm font-semibold text-marketing-on">Para clientes</p>
+              <ul className="space-y-2.5">
+                {clientLinks.map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} className={linkClass}>
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="mb-4 text-sm font-semibold text-marketing-on">Para freelancers</p>
+              <ul className="space-y-2.5">
+                {freelancerLinks.map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} className={linkClass}>
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="mb-4 text-sm font-semibold text-marketing-on">Empresa</p>
+              <ul className="space-y-2.5">
+                {companyLinks.map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} className={linkClass}>
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex items-center gap-2">
+                {communityLinks.map(({ id, Icon, label, href }) => (
+                  <Link
+                    key={id}
+                    href={href}
+                    aria-label={label}
+                    title={label}
+                    className="inline-flex size-9 items-center justify-center rounded-full border border-white/20 text-marketing-on-muted transition hover:border-white/45 hover:text-marketing-on"
+                  >
+                    <Icon className="size-4" aria-hidden />
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-10 grid gap-3 md:grid-cols-2">
-          {[
-            "¿Cómo pago de forma segura en fichame.pe?",
-            "¿Qué pasa si el servicio no cumple lo acordado?",
-            "¿Cómo contacto soporte en Lima?",
-            "¿Puedo contratar servicios presenciales?",
-          ].map((question) => (
-            <details key={question} className="rounded-xl border border-white/15 p-3">
-              <summary className="cursor-pointer text-sm font-medium text-white/90">
-                {question}
-              </summary>
-              <p className="mt-2 text-xs text-white/60">
-                Te acompañamos durante toda la compra para que contrates con confianza y
-                recibas resultado al toque.
-              </p>
-            </details>
-          ))}
+        <div className="mt-5 grid items-center gap-3 md:grid-cols-3">
+          <div className="order-2 flex flex-wrap items-center justify-center gap-4 md:order-1 md:justify-start">
+            {legalLinks.map((item) => (
+              <Link key={item.href} href={item.href} className={linkClass}>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          <p className="order-1 text-center text-xs tracking-wide text-marketing-on-subtle md:order-2">
+            © {currentYear} fichame.pe — Hecho en Lima, Perú.
+          </p>
+
+          <p className="order-3 inline-flex items-center justify-center gap-2 text-xs text-marketing-on-muted md:justify-end">
+            <ShieldCheck className="size-4 text-[#76f3ef]" aria-hidden />
+            Plataforma protegida para compras y entregas digitales.
+          </p>
         </div>
-      </div>
-      <div className="mx-auto max-w-6xl border-t border-[rgba(255,255,255,0.08)] px-4 py-6">
-        <p className="text-center text-[13px] text-[rgba(255,255,255,0.4)]">
-          © 2026 fichame.pe — Hecho en Lima, Peru · {SITE_TAGLINES[7]}
-        </p>
       </div>
     </footer>
   );

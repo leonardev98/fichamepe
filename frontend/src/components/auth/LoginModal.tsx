@@ -14,7 +14,10 @@ import { Label } from "@heroui/react/label";
 import { FieldError } from "@heroui/react/field-error";
 import { Eye, EyeOff, X } from "lucide-react";
 import { fetchAuthMe, parseApiErrorMessage, postLogin } from "@/lib/api/auth.api";
-import { resolvePostLoginHref } from "@/lib/post-login-redirect";
+import {
+  resolvePostLoginHref,
+  sanitizePostLoginFrom,
+} from "@/lib/post-login-redirect";
 import { useAuthModals } from "@/components/auth/auth-modals-context";
 import { GoogleMark } from "@/components/auth/GoogleMark";
 import { useAuthStore } from "@/store/auth.store";
@@ -32,9 +35,10 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 type LoginModalProps = {
   state: UseOverlayStateReturn;
+  afterLoginHref?: string | null;
 };
 
-export function LoginModal({ state }: LoginModalProps) {
+export function LoginModal({ state, afterLoginHref = null }: LoginModalProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { openRegister, openForgotPassword } = useAuthModals();
@@ -43,13 +47,17 @@ export function LoginModal({ state }: LoginModalProps) {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const postLoginFromParam = useMemo(() => {
+    const fromModal = sanitizePostLoginFrom(afterLoginHref);
+    if (fromModal) return fromModal;
+    return sanitizePostLoginFrom(searchParams.get("from"));
+  }, [afterLoginHref, searchParams]);
+
   const googleOAuthHref = useMemo(() => {
-    const from = searchParams.get("from");
     return buildGoogleOAuthStartUrl({
-      from:
-        typeof from === "string" && from.startsWith("/") ? from : "/",
+      from: postLoginFromParam ?? "/",
     });
-  }, [searchParams]);
+  }, [postLoginFromParam]);
 
   const {
     register,
@@ -68,9 +76,11 @@ export function LoginModal({ state }: LoginModalProps) {
       setAccessToken(accessToken);
       const user = await fetchAuthMe();
       loginStore(accessToken, user);
+      const from =
+        sanitizePostLoginFrom(afterLoginHref) ??
+        sanitizePostLoginFrom(searchParams.get("from"));
       reset();
       state.close();
-      const from = searchParams.get("from");
       router.replace(resolvePostLoginHref(user.role, from));
     } catch (e: unknown) {
       setFormError("root", {

@@ -28,6 +28,8 @@ export function ConversationServiceSummaryCard({
   compact = false,
 }: ConversationServiceSummaryCardProps) {
   const serviceId = conversation.serviceId;
+  const isClientRequest = conversation.threadKind === "client_request";
+  const clientRequestId = conversation.clientRequestId;
 
   return (
     <div
@@ -51,13 +53,17 @@ export function ConversationServiceSummaryCard({
           >
             {conversation.serviceTitle}
           </p>
-          <div className="mt-2">
-            <PriceDisplay
-              price={conversation.servicePrice}
-              previousPrice={conversation.servicePreviousPrice}
-            />
-          </div>
-          {conversation.serviceCategory || conversation.serviceDeliveryTime ? (
+          {!isClientRequest ? (
+            <div className="mt-2">
+              <PriceDisplay
+                price={conversation.servicePrice}
+                previousPrice={conversation.servicePreviousPrice}
+              />
+            </div>
+          ) : (
+            <p className="mt-2 text-sm font-medium text-muted">Solicitud de trabajo (sin precio fijo)</p>
+          )}
+          {!isClientRequest && (conversation.serviceCategory || conversation.serviceDeliveryTime) ? (
             <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
               {conversation.serviceCategory ? (
                 <span className="inline-flex items-center gap-1">
@@ -80,7 +86,17 @@ export function ConversationServiceSummaryCard({
           ) : null}
         </div>
       </div>
-      {serviceId ? (
+      {isClientRequest && clientRequestId ? (
+        <Link
+          href={`/solicitar/${clientRequestId}`}
+          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.07] py-2.5 text-sm font-semibold text-primary transition hover:border-primary/40 hover:bg-primary/10 ${
+            compact ? "text-xs py-2" : ""
+          }`}
+        >
+          Ver solicitud
+          <ArrowUpRight className="size-4 shrink-0 opacity-90" aria-hidden />
+        </Link>
+      ) : serviceId ? (
         <Link
           href={`/servicios/${serviceId}`}
           className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.07] py-2.5 text-sm font-semibold text-primary transition hover:border-primary/40 hover:bg-primary/10 ${

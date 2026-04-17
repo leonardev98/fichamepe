@@ -3,11 +3,13 @@ import type { UserRole } from "@/types/auth";
 const ALLOWED_PREFIXES = [
   "/dashboard",
   "/cuenta",
+  "/cuenta/solicitudes",
   "/explorar",
   "/servicios",
   "/perfil",
   "/skills",
   "/conversaciones",
+  "/solicitar",
 ] as const;
 
 /**

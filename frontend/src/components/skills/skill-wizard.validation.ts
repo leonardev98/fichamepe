@@ -96,6 +96,7 @@ export function validateField(
       return validatePromoFields(data)[field];
     }
     case "promoEnabled":
+    case "featuredEnabled":
       return undefined;
     case "deliveryTime":
       return data.deliveryTime ? undefined : "Selecciona tiempo de entrega.";

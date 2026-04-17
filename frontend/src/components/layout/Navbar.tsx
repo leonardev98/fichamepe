@@ -27,10 +27,13 @@ import { Drawer } from "@heroui/react/drawer";
 import { Dropdown } from "@heroui/react/dropdown";
 import { ChatDock } from "@/components/conversaciones/ChatDock";
 import { ConversationsPopover } from "@/components/conversaciones/ConversationsPopover";
+import { NotificationsPopover } from "@/components/notifications/NotificationsPopover";
 import { useAuthModals } from "@/components/auth/auth-modals-context";
 import { useAuthStore } from "@/store/auth.store";
 import { useConversationsStore } from "@/stores/conversationsStore";
+import { useNotificationsStore } from "@/stores/notificationsStore";
 import { NavbarCompactSearch } from "@/components/layout/NavbarCompactSearch";
+import { CountrySelector } from "@/components/layout/CountrySelector";
 import { SITE_LOGO_URL } from "@/lib/constants";
 import type { AuthUser } from "@/types/auth";
 
@@ -355,9 +358,11 @@ export function Navbar() {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const unreadTotal = useConversationsStore((state) => state.unreadTotal());
-  const [notifications] = useState(3);
+  const unreadNotifications = useNotificationsStore((s) => s.unreadCount);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const conversationsMenuRef = useRef<HTMLDivElement | null>(null);
+  const notificationsMenuRef = useRef<HTMLDivElement | null>(null);
   const accountUser = isAuthenticated && user ? user : null;
 
   useEffect(() => {
@@ -381,6 +386,27 @@ export function Navbar() {
     };
   }, [isConversationsOpen]);
 
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+    const onClickOutside = (event: MouseEvent) => {
+      if (!notificationsMenuRef.current) return;
+      if (!notificationsMenuRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsNotificationsOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onClickOutside);
+    window.addEventListener("keydown", onEscape);
+    return () => {
+      window.removeEventListener("mousedown", onClickOutside);
+      window.removeEventListener("keydown", onEscape);
+    };
+  }, [isNotificationsOpen]);
+
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-border bg-white/95 backdrop-blur">
@@ -394,6 +420,10 @@ export function Navbar() {
           <nav className="hidden items-center gap-4 lg:flex">
             <NavLinks />
           </nav>
+
+          <div className="hidden lg:flex">
+            <CountrySelector compact />
+          </div>
 
           <div className="hidden items-center gap-2 lg:flex">
             {accountUser ? (
@@ -427,16 +457,27 @@ export function Navbar() {
                   ) : null}
                 </div>
 
-                <Link
-                  href="/notificaciones"
-                  className="relative inline-flex size-10 items-center justify-center rounded-full border border-border text-muted transition hover:border-primary/40 hover:text-primary"
-                  aria-label="Notificaciones"
-                >
-                  <Bell className="size-4" aria-hidden />
-                  <span className="absolute -right-0.5 -top-0.5 inline-flex size-4 items-center justify-center rounded-full bg-accent-red text-[10px] font-bold text-white">
-                    {notifications}
-                  </span>
-                </Link>
+                <div className="relative" ref={notificationsMenuRef}>
+                  <button
+                    type="button"
+                    className="relative inline-flex size-10 items-center justify-center rounded-full border border-border text-muted transition hover:border-primary/40 hover:text-primary"
+                    aria-label="Notificaciones"
+                    aria-expanded={isNotificationsOpen}
+                    onClick={() => setIsNotificationsOpen((prev) => !prev)}
+                  >
+                    <Bell className="size-4" aria-hidden />
+                    {unreadNotifications > 0 ? (
+                      <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-accent-red px-1 py-0.5 text-[10px] font-bold text-white">
+                        {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                      </span>
+                    ) : null}
+                  </button>
+                  {isNotificationsOpen ? (
+                    <div className="absolute right-0 top-[calc(100%+8px)] z-[65]">
+                      <NotificationsPopover onOpenChange={setIsNotificationsOpen} />
+                    </div>
+                  ) : null}
+                </div>
                 <Link
                   href="/favoritos"
                   className="inline-flex size-10 items-center justify-center rounded-full border border-border text-muted transition hover:border-primary/40 hover:text-primary"
@@ -498,6 +539,7 @@ export function Navbar() {
                     </Drawer.Header>
                     <Drawer.Body className="flex flex-col gap-6 p-4">
                       <NavbarCompactSearch className="w-full" />
+                      <CountrySelector className="w-full justify-between" />
                       <nav className="flex flex-col gap-4">
                         <NavLinks onNavigate={() => mobileNav.close()} />
                       </nav>
@@ -523,6 +565,18 @@ export function Navbar() {
                             {unreadTotal > 0 ? (
                               <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">
                                 {unreadTotal}
+                              </span>
+                            ) : null}
+                          </Link>
+                          <Link
+                            href="/notificaciones"
+                            onClick={() => mobileNav.close()}
+                            className="inline-flex w-full items-center justify-between rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-foreground transition hover:border-primary/35 hover:bg-primary/5"
+                          >
+                            Notificaciones
+                            {unreadNotifications > 0 ? (
+                              <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-accent-red px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                {unreadNotifications > 99 ? "99+" : unreadNotifications}
                               </span>
                             ) : null}
                           </Link>

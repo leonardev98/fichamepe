@@ -1,8 +1,10 @@
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
+  Matches,
   IsOptional,
   IsString,
   Max,
@@ -49,4 +51,22 @@ export class FeedQueryDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : undefined,
+  )
+  @Matches(/^[A-Z]{2}$/)
+  country?: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' || value === true
+      ? true
+      : value === 'false' || value === false
+        ? false
+        : undefined,
+  )
+  @IsBoolean()
+  featuredOnly?: boolean;
 }

@@ -13,6 +13,7 @@ export type SkillFormDraft = {
   listPrice?: number | null;
   /** Fin de oferta (ISO); null quita la oferta temporal. */
   promoEndsAt?: string | null;
+  isFeatured?: boolean;
   deliveryTime: string;
   revisionsIncluded: string;
   coverImageUrl?: string | null;
@@ -27,6 +28,7 @@ function asServicePublic(raw: ServicePublic): ServicePublic {
     updatedAt:
       typeof raw.updatedAt === "string" ? raw.updatedAt : String(raw.updatedAt ?? ""),
     status: raw.status ?? (raw.isActive ? "ACTIVA" : "PAUSADA"),
+    isFeatured: raw.isFeatured ?? false,
     category: raw.category ?? "other",
     deliveryMode: raw.deliveryMode ?? "digital",
     deliveryTime: raw.deliveryTime ?? "A coordinar",

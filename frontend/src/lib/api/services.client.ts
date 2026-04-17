@@ -1,4 +1,5 @@
 import { mockServices } from "@/data/mockServices";
+import { normalizeCountryCode } from "@/lib/country";
 import { enrichService } from "@/lib/service-enrichment";
 import type { ServicesFeedResponse } from "@/types/service.types";
 
@@ -8,6 +9,8 @@ type FetchFeedServicesParams = {
   orderBy?: "recent" | "popular" | "random";
   search?: string;
   tags?: string[];
+  country?: string;
+  featuredOnly?: boolean;
 };
 
 function unwrapApiSuccess<T>(data: unknown): T {
@@ -37,6 +40,13 @@ export async function fetchFeedServicesClient(
   sp.set("orderBy", params.orderBy ?? "random");
   if (params.search?.trim()) sp.set("search", params.search.trim());
   if (params.tags?.length) params.tags.forEach((tag) => sp.append("tags", tag));
+  const normalizedCountry = normalizeCountryCode(params.country ?? null);
+  if (normalizedCountry) {
+    sp.set("country", normalizedCountry);
+  }
+  if (params.featuredOnly) {
+    sp.set("featuredOnly", "true");
+  }
 
   try {
     const res = await fetch(`${base}/services/feed?${sp.toString()}`, {

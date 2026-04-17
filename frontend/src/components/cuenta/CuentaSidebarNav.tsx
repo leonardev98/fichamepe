@@ -12,6 +12,7 @@ const CUENTA_LINKS = [
   { href: "/cuenta/configuracion", label: "Configuración", match: "/cuenta/configuracion" },
   { href: "/cuenta/referidos", label: "Mis referidos", match: "/cuenta/referidos" },
   { href: "/cuenta/publicaciones", label: "Mis publicaciones", match: "/cuenta/publicaciones" },
+  { href: "/cuenta/solicitudes", label: "Mis solicitudes", match: "/cuenta/solicitudes" },
   {
     href: "/cuenta/publicaciones?filtro=REQUIERE_CAMBIOS",
     label: "Correcciones pendientes",

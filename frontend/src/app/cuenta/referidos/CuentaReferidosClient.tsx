@@ -1,13 +1,18 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Gift, Link2, Share2, Users } from "lucide-react";
+import { Gift, Link2, RefreshCw, Share2, Users } from "lucide-react";
 import { Button } from "@heroui/react/button";
 import { Input } from "@heroui/react/input";
 import { Label } from "@heroui/react/label";
+import { ProgressBar } from "@heroui/react/progress-bar";
 import { fetchAuthMe, parseApiErrorMessage } from "@/lib/api/auth.api";
-import { postApplyReferralCode } from "@/lib/api/referrals.api";
+import {
+  fetchMyReferredUsers,
+  postApplyReferralCode,
+  type ReferredUserRow,
+} from "@/lib/api/referrals.api";
 import { useAuthStore } from "@/store/auth.store";
 
 function shareUrlForCode(code: string): string {
@@ -17,6 +22,15 @@ function shareUrlForCode(code: string): string {
   return u.toString();
 }
 
+function formatReferralDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
 export function CuentaReferidosClient() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -24,32 +38,65 @@ export function CuentaReferidosClient() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [referred, setReferred] = useState<ReferredUserRow[]>([]);
+  const [refLoading, setRefLoading] = useState(false);
+  const [refError, setRefError] = useState(false);
 
   const myCode = user?.referralCode ?? "";
   const link = useMemo(() => shareUrlForCode(myCode), [myCode]);
 
-  const quotaLabel = useMemo(() => {
-    if (!user) return "";
-    if (user.isPublicationExempt) {
-      return "Tu cuenta no tiene límite de publicaciones activas.";
-    }
-    const max = user.publicationActiveMax ?? 0;
-    return `${user.publicationActiveCount} de ${max} publicaciones activas`;
+  const featuredMax = useMemo(() => {
+    if (!user) return 0;
+    return Math.max(0, user.featuredActiveMax ?? user.referralDirectCount ?? 0);
   }, [user]);
 
-  const quotaPct = useMemo(() => {
-    if (
-      !user ||
-      user.isPublicationExempt ||
-      user.publicationActiveMax == null ||
-      user.publicationActiveMax <= 0
-    ) {
+  const featuredQuotaPct = useMemo(() => {
+    if (!user || featuredMax <= 0) {
       return 0;
     }
     return Math.min(
       100,
-      Math.round((user.publicationActiveCount / user.publicationActiveMax) * 100),
+      Math.round(((user.featuredActiveCount ?? 0) / featuredMax) * 100),
     );
+  }, [featuredMax, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      setRefLoading(true);
+      setRefError(false);
+      try {
+        const items = await fetchMyReferredUsers();
+        if (!cancelled) setReferred(items);
+      } catch {
+        if (!cancelled) {
+          setReferred([]);
+          setRefError(true);
+        }
+      } finally {
+        if (!cancelled) setRefLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Intencional: al cambiar de usuario; la lista también se refresca con el botón «Actualizar».
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- user?.id identifica la cuenta
+  }, [user?.id]);
+
+  const reloadReferrals = useCallback(async () => {
+    if (!user) return;
+    setRefLoading(true);
+    setRefError(false);
+    try {
+      setReferred(await fetchMyReferredUsers());
+    } catch {
+      setReferred([]);
+      setRefError(true);
+    } finally {
+      setRefLoading(false);
+    }
   }, [user]);
 
   const copyText = useCallback(async (text: string, kind: "code" | "link") => {
@@ -113,43 +160,84 @@ export function CuentaReferidosClient() {
         </div>
         <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">Mis referidos</h2>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Comparte tu código o enlace: cada persona que se registre o se afilie contigo suma un cupo extra
-          permanente de publicación <strong className="font-semibold text-foreground">activa</strong> para ti,
-          hasta un máximo de <strong className="font-semibold text-foreground">3</strong> por este programa. Tú
-          también puedes apoyar a alguien una sola vez con su código.
+          Comparte tu código o enlace. Cada persona que se registre con tu referido te habilita{" "}
+          <strong className="font-semibold text-foreground">1 publicación destacada activa</strong>.
+          También puedes apoyar a otra persona una sola vez con su código.
         </p>
       </header>
 
-      {!user.isPublicationExempt ? (
+      <div className="grid gap-4 lg:grid-cols-2">
         <section
-          className="rounded-2xl border border-border bg-white p-5 shadow-sm sm:p-6"
-          aria-labelledby="quota-heading"
+          className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6"
+          aria-labelledby="referral-slots-heading"
         >
-          <h3 id="quota-heading" className="text-sm font-semibold text-foreground">
-            Tu cupo de publicaciones
+          <h3 id="referral-slots-heading" className="text-[11px] font-bold uppercase tracking-wide text-muted">
+            Cupos de destacadas por referidos
           </h3>
-          <p className="mt-1 text-xs text-muted">
-            Solo cuentan las fichas en estado <strong className="font-semibold text-foreground">ACTIVA</strong>{" "}
-            frente a tu tope. Referidos: hasta +3 permanentes; también puedes comprar slots o un plan mensual
-            desde «Mis publicaciones».
+          <p className="mt-2 flex flex-wrap items-baseline gap-1 tabular-nums">
+            <span className="text-4xl font-extrabold tracking-tight text-primary sm:text-5xl">{featuredMax}</span>
+            <span className="pb-1 text-2xl font-bold text-muted">/</span>
+            <span className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+              {user.referralDirectCount}
+            </span>
           </p>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-foreground">{quotaLabel}</span>
-              <span className="tabular-nums text-muted">{quotaPct}%</span>
-            </div>
-            <div
-              className="h-2.5 overflow-hidden rounded-full bg-muted/25"
-              role="progressbar"
-              aria-valuenow={quotaPct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={quotaLabel}
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            {featuredMax} cupos activos para destacar publicaciones, basados en tus referidos
+            válidos ({user.referralDirectCount}).
+          </p>
+          <div className="mt-4">
+            <ProgressBar
+              aria-label={`Cupos de destacadas disponibles: ${featuredMax} de ${user.referralDirectCount}`}
+              minValue={0}
+              maxValue={Math.max(1, user.referralDirectCount)}
+              value={featuredMax}
+              color="default"
+              size="md"
+              className="w-full"
             >
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500"
-                style={{ width: `${quotaPct}%` }}
-              />
+              <ProgressBar.Track>
+                <ProgressBar.Fill className="bg-primary" />
+              </ProgressBar.Track>
+            </ProgressBar>
+          </div>
+        </section>
+
+        <section
+          className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6"
+          aria-labelledby="active-quota-heading"
+        >
+          <h3 id="active-quota-heading" className="text-[11px] font-bold uppercase tracking-wide text-muted">
+            Destacadas activas en uso
+          </h3>
+          <p className="mt-2 flex flex-wrap items-baseline gap-1 tabular-nums">
+            <span className="text-4xl font-extrabold tracking-tight text-primary sm:text-5xl">
+              {user.featuredActiveCount}
+            </span>
+            <span className="pb-1 text-2xl font-bold text-muted">/</span>
+            <span className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+              {featuredMax}
+            </span>
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Cada publicación destacada activa consume 1 cupo. Si la pausas o desactivas el destacado,
+            el cupo vuelve a estar disponible.
+          </p>
+          <div className="mt-4">
+            <ProgressBar
+              aria-label={`Destacadas activas en uso: ${user.featuredActiveCount} de ${featuredMax}`}
+              minValue={0}
+              maxValue={Math.max(1, featuredMax)}
+              value={Math.min(user.featuredActiveCount, Math.max(1, featuredMax))}
+              color="default"
+              size="md"
+              className="w-full"
+            >
+              <ProgressBar.Track>
+                <ProgressBar.Fill className="bg-primary" />
+              </ProgressBar.Track>
+            </ProgressBar>
+            <div className="mt-2 flex justify-end">
+              <span className="text-xs tabular-nums text-muted">{featuredQuotaPct}%</span>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -159,20 +247,91 @@ export function CuentaReferidosClient() {
             >
               Ir a mis publicaciones
             </Link>
-            {user.referralDirectCount > 0 ? (
-              <p className="flex h-10 items-center text-xs text-muted">
-                Referidos totales:{" "}
-                <span className="ml-1 font-semibold tabular-nums text-foreground">{user.referralDirectCount}</span>
-              </p>
-            ) : null}
+            <Link
+              href="/skills/new"
+              className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-white transition hover:opacity-95"
+            >
+              Crear publicación
+            </Link>
           </div>
         </section>
-      ) : (
-        <p className="rounded-2xl border border-border bg-primary/[0.06] px-4 py-3 text-sm text-foreground">
-          Tu cuenta tiene publicaciones ilimitadas. Igual puedes compartir tu código para ayudar a
-          crecer la comunidad.
-        </p>
-      )}
+      </div>
+
+      <section
+        className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6"
+        aria-labelledby="referred-list-heading"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 id="referred-list-heading" className="text-sm font-semibold text-foreground">
+              Personas que se registraron con tu código
+            </h3>
+            <p className="mt-1 max-w-xl text-xs text-muted">
+              Orden de llegada. Cada referido válido suma 1 cupo para destacar publicaciones activas.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-full border-border"
+            isDisabled={refLoading}
+            onPress={() => void reloadReferrals()}
+          >
+            <RefreshCw className="mr-1.5 size-4" aria-hidden />
+            Actualizar
+          </Button>
+        </div>
+
+        {refLoading ? (
+          <div className="mt-6 space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-14 animate-pulse rounded-xl bg-muted/20" />
+            ))}
+          </div>
+        ) : refError ? (
+          <div className="mt-6 rounded-xl border border-border bg-muted/10 px-4 py-4 text-center">
+            <p className="text-sm text-muted">No pudimos cargar la lista.</p>
+            <Button
+              type="button"
+              variant="ghost"
+              className="mt-3 rounded-full bg-gradient-to-r from-primary to-primary-light px-6 font-semibold text-white shadow-md shadow-primary/25 hover:opacity-95"
+              onPress={() => void reloadReferrals()}
+            >
+              Reintentar
+            </Button>
+          </div>
+        ) : referred.length === 0 ? (
+          <div className="mt-6 rounded-xl border border-dashed border-border bg-muted/[0.04] px-4 py-10 text-center">
+            <p className="text-sm text-muted">
+              Aún nadie se ha registrado con tu enlace. Copia tu código abajo y compártelo.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-6 divide-y divide-border rounded-xl border border-border bg-white">
+            {referred.map((row, index) => {
+              const countsForCap = index < featuredMax;
+              return (
+                <li key={row.id} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground">{row.fullName?.trim() || "Sin nombre"}</p>
+                    <p className="text-xs text-muted">{formatReferralDate(row.createdAt)}</p>
+                  </div>
+                  <span
+                    className={`inline-flex w-fit shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                      countsForCap
+                        ? "bg-success/15 text-success"
+                        : "bg-muted/30 text-muted"
+                    }`}
+                  >
+                    {countsForCap ? "Habilita 1 destacada" : "Fuera de cupo aplicable"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-border bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-start gap-3">
@@ -191,8 +350,8 @@ export function CuentaReferidosClient() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
-                  variant="primary"
-                  className="rounded-full"
+                  variant="ghost"
+                  className="rounded-full bg-gradient-to-r from-primary to-primary-light px-6 font-semibold text-white shadow-md shadow-primary/25 hover:opacity-95"
                   onPress={() => myCode && void copyText(myCode, "code")}
                   isDisabled={!myCode}
                 >
@@ -223,9 +382,9 @@ export function CuentaReferidosClient() {
             <div>
               <h3 className="text-sm font-semibold text-foreground">Apoya a alguien</h3>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                Solo puedes hacerlo <strong className="font-semibold text-foreground">una vez</strong>. Al
-                guardar, quedarás vinculado a ese referidor y él recibirá un cupo extra de publicación.
-                No puedes usar tu propio código.
+                Solo puedes hacerlo <strong className="font-semibold text-foreground">una vez</strong>. Al guardar,
+                quedarás vinculado a ese referidor y él recibirá un cupo de destacada. No puedes usar
+                tu propio código.
               </p>
             </div>
             {user.hasReferredBy ? (
@@ -250,8 +409,8 @@ export function CuentaReferidosClient() {
                 </div>
                 <Button
                   type="button"
-                  variant="primary"
-                  className="h-11 shrink-0 rounded-full px-6"
+                  variant="ghost"
+                  className="h-11 shrink-0 rounded-full bg-gradient-to-r from-primary to-primary-light px-6 font-semibold text-white shadow-md shadow-primary/25 hover:opacity-95"
                   onPress={() => void onApplyReferral()}
                   isDisabled={busy || codeInput.trim().length < 4}
                 >
@@ -261,9 +420,7 @@ export function CuentaReferidosClient() {
             )}
             <div aria-live="polite" className="min-h-[1.25rem] text-sm">
               {message ? (
-                <p className={message.type === "ok" ? "text-success" : "text-accent-red"}>
-                  {message.text}
-                </p>
+                <p className={message.type === "ok" ? "text-success" : "text-accent-red"}>{message.text}</p>
               ) : null}
             </div>
           </div>

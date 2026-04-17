@@ -3,6 +3,7 @@
 import {
   Image as ImageIcon,
   Lightbulb,
+  Star,
   Sparkles,
   Timer,
   Upload,
@@ -40,6 +41,8 @@ type SkillDetailsStepProps = {
   onConfirmCroppedCover?: (file: File) => Promise<void> | void;
   onPromoToggle: (enabled: boolean) => void;
   onPromoPreset: (msFromNow: number) => void;
+  featuredSlotsAvailable: number;
+  onFeaturedToggle: (enabled: boolean) => void;
 };
 
 export function SkillDetailsStep({
@@ -56,11 +59,14 @@ export function SkillDetailsStep({
   onConfirmCroppedCover,
   onPromoToggle,
   onPromoPreset,
+  featuredSlotsAvailable,
+  onFeaturedToggle,
 }: SkillDetailsStepProps) {
   const parsedPrice = Number(data.price);
   const priceText = Number.isFinite(parsedPrice) ? parsedPrice : 0;
   const parsedList = Number(data.listPrice);
   const listOk = Number.isFinite(parsedList) && Number.isFinite(parsedPrice) && parsedList > parsedPrice;
+  const canFeature = featuredSlotsAvailable > 0;
 
   const coverBlock = (
     <div className={wizardSectionClass}>
@@ -301,6 +307,48 @@ export function SkillDetailsStep({
     </div>
   );
 
+  const featuredBlock = (
+    <div className={wizardSectionClass}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/20 text-primary-dark">
+            <Star className="size-5" strokeWidth={2} aria-hidden />
+          </span>
+          <div>
+            <p className="text-base font-bold tracking-tight text-foreground">Publicación destacada</p>
+            <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted sm:text-[13px]">
+              1 referido te da 1 cupo de destacada activa. Las destacadas aparecen arriba en la
+              página de inicio.
+            </p>
+            <p className="mt-2 text-xs font-semibold text-foreground">
+              Cupos disponibles: <span className="tabular-nums text-primary">{featuredSlotsAvailable}</span>
+            </p>
+          </div>
+        </div>
+        <Switch
+          isSelected={data.featuredEnabled}
+          isDisabled={!canFeature}
+          onChange={onFeaturedToggle}
+          className="shrink-0 self-start sm:self-center"
+          aria-label="Activar publicación destacada"
+        >
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+          <Switch.Content>
+            <span className="text-sm font-semibold text-foreground">Destacar</span>
+          </Switch.Content>
+        </Switch>
+      </div>
+      {!canFeature ? (
+        <p className="mt-3 rounded-xl border border-border bg-surface-elevated px-3 py-2 text-xs leading-relaxed text-muted">
+          Ahora mismo no tienes cupos de destacadas. Consigue 1 referido para desbloquear 1
+          destacada activa.
+        </p>
+      ) : null}
+    </div>
+  );
+
   return (
     <section className="space-y-8">
       <div className={wizardSectionClass}>
@@ -443,6 +491,7 @@ export function SkillDetailsStep({
       </div>
 
       {coverBlock}
+      {featuredBlock}
       {promoBlock}
     </section>
   );

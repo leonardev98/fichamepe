@@ -12,9 +12,13 @@ export type ConversationParticipant = {
   avatarUrl?: string | null;
 };
 
+export type ConversationThreadKind = "service" | "client_request";
+
 export type ConversationThread = {
   id: string;
-  serviceId?: string;
+  threadKind: ConversationThreadKind;
+  serviceId?: string | null;
+  clientRequestId?: string | null;
   /** Dueño del servicio (publicador). */
   sellerUserId?: string;
   /** Quien consulta o contrata (comprador). */

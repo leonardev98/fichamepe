@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CircleCheckBig, Clock3, Eye, MapPin, ShieldCheck } from "lucide-react";
 import { ServiceCard } from "@/components/cards/ServiceCard";
@@ -7,25 +8,89 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { ServiceDetailActions } from "@/components/services/ServiceDetailActions";
+import { ServicePublicUnavailable } from "@/components/services/ServicePublicUnavailable";
 import { ServiceReviewsSection } from "@/components/reviews/ServiceReviewsSection";
 import {
   fetchFeedServicesSafe,
-  fetchServiceById,
+  fetchServiceByIdOrNull,
   fetchServicesByProfileId,
 } from "@/lib/api/services.api";
+import { SEO_DEFAULT_OG_IMAGE, SEO_SITE_NAME, truncateText } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
+export const revalidate = 60 * 60 * 24;
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  try {
+    const service = await fetchServiceByIdOrNull(id);
+    if (!service) {
+      return {
+        title: "Publicación no disponible",
+        description: "Esta publicación ya no está disponible en FichaMePe.",
+        alternates: { canonical: `/servicios/${id}` },
+        robots: { index: false, follow: false },
+      };
+    }
+    const description = truncateText(service.description, 160);
+    const image = service.coverImageUrl ?? SEO_DEFAULT_OG_IMAGE;
+    return {
+      title: service.title,
+      description,
+      keywords: [
+        service.category,
+        ...service.tags.slice(0, 6),
+        "servicio freelance",
+        "contratar freelancer",
+      ],
+      alternates: {
+        canonical: `/servicios/${service.id}`,
+      },
+      openGraph: {
+        type: "article",
+        locale: "es_PE",
+        siteName: SEO_SITE_NAME,
+        title: `${service.title} | ${SEO_SITE_NAME}`,
+        description,
+        url: `/servicios/${service.id}`,
+        publishedTime: service.createdAt,
+        modifiedTime: service.updatedAt,
+        images: [
+          {
+            url: image,
+            width: 1200,
+            height: 630,
+            alt: service.title,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${service.title} | ${SEO_SITE_NAME}`,
+        description,
+        images: [image],
+      },
+    };
+  } catch {
+    return { title: "Servicio" };
+  }
+}
+
 export default async function ServicioDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  let service;
+  let service: Awaited<ReturnType<typeof fetchServiceByIdOrNull>>;
   try {
-    service = await fetchServiceById(id);
+    service = await fetchServiceByIdOrNull(id);
   } catch {
     notFound();
+  }
+
+  if (service === null) {
+    return <ServicePublicUnavailable />;
   }
 
   const profile = service.profile;
@@ -48,8 +113,47 @@ export default async function ServicioDetailPage({ params }: PageProps) {
     .filter((candidate) => candidate.profileId !== service.profileId)
     .slice(0, 4);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: service.title,
+    description: truncateText(service.description, 500),
+    category: service.category,
+    provider: {
+      "@type": "Person",
+      name: profile?.displayName ?? "Freelancer",
+      url: `https://fichame.pe/perfil/${service.profileId}`,
+    },
+    areaServed: "Lima, Peru",
+    offers: {
+      "@type": "Offer",
+      priceCurrency: service.currency ?? "PEN",
+      price: service.price ?? undefined,
+      availability: "https://schema.org/InStock",
+      url: `https://fichame.pe/servicios/${service.id}`,
+    },
+    aggregateRating:
+      service.reviewCount && service.reviewAverage
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: service.reviewAverage,
+            reviewCount: service.reviewCount,
+          }
+        : undefined,
+    datePublished: service.createdAt,
+    dateModified: service.updatedAt,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `https://fichame.pe/servicios/${service.id}`,
+    },
+  };
+
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-10">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_340px]">

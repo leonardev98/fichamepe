@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SITE_TAGLINES } from "@/lib/constants";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Cómo funciona FichaMePe",
+  description:
+    "Aprende cómo contratar o vender servicios freelance en FichaMePe en pocos pasos y sin intermediarios.",
+  path: "/como-funciona",
+  keywords: ["como funciona fichamepe", "contratar freelancers", "vender servicios"],
+});
 
 const DISCOVERY_EXAMPLES = [
   "Alguien que te arme tu CV y te consiga chamba",

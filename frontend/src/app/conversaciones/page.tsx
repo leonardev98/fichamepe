@@ -19,6 +19,8 @@ import {
 import { useAuthStore } from "@/store/auth.store";
 import { useConversationsStore } from "@/stores/conversationsStore";
 
+const OPEN_CONV_PARAM = "open";
+
 type InboxTab = "buyer" | "seller" | "other";
 
 function parseVistaParam(v: string | null): InboxTab | null {
@@ -49,7 +51,6 @@ function ConversacionesContent() {
   const searchParams = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const userId = user?.id ?? null;
-
   const [draft, setDraft] = useState("");
   const [mobileConversationId, setMobileConversationId] = useState<string | null>(null);
 
@@ -63,6 +64,26 @@ function ConversacionesContent() {
     () => tabFromSearchParams(searchParams, user?.role),
     [searchParams, user?.role],
   );
+
+  const openConversationId = searchParams.get(OPEN_CONV_PARAM);
+
+  useEffect(() => {
+    if (!openConversationId) return;
+    let cancelled = false;
+    void (async () => {
+      await useConversationsStore.getState().syncFromApi();
+      if (cancelled) return;
+      useConversationsStore.getState().setActiveConversation(openConversationId);
+      setMobileConversationId(openConversationId);
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete(OPEN_CONV_PARAM);
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [openConversationId, pathname, router, searchParams]);
 
   const filteredConversations = useMemo(() => {
     if (tab === "buyer") return filterConversationsByPerspective(conversations, "buyer", userId);
@@ -212,9 +233,9 @@ function ConversacionesContent() {
                       </h2>
                       <ConversationPerspectiveChip perspective={desktopPerspective} />
                     </div>
-                    {perspectiveContextLine(desktopPerspective) ? (
+                    {perspectiveContextLine(desktopPerspective, desktopConversation) ? (
                       <p className="mt-1 text-[11px] leading-snug text-muted/90">
-                        {perspectiveContextLine(desktopPerspective)}
+                        {perspectiveContextLine(desktopPerspective, desktopConversation)}
                       </p>
                     ) : null}
                   </div>
@@ -292,9 +313,9 @@ function ConversacionesContent() {
                       </h2>
                       <ConversationPerspectiveChip perspective={mobilePerspective} />
                     </div>
-                    {perspectiveContextLine(mobilePerspective) ? (
+                    {perspectiveContextLine(mobilePerspective, mobileConversation) ? (
                       <p className="mt-0.5 text-[11px] leading-snug text-muted/90">
-                        {perspectiveContextLine(mobilePerspective)}
+                        {perspectiveContextLine(mobilePerspective, mobileConversation)}
                       </p>
                     ) : null}
                   </div>

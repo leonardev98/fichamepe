@@ -11,6 +11,7 @@ export type ServiceResponse = {
   flashDealEndsAt: string | null;
   currency: 'PEN';
   coverImageUrl: string | null;
+  isFeatured: boolean;
   status: Service['status'];
   isActive: boolean;
   viewCount: number;
@@ -48,6 +49,7 @@ export function toServiceResponse(s: Service): ServiceResponse {
     flashDealEndsAt: promoEnds ? promoEnds.toISOString() : null,
     currency: s.currency,
     coverImageUrl: s.coverImageUrl,
+    isFeatured: s.isFeatured ?? false,
     status: s.status,
     isActive: s.status === 'ACTIVA',
     viewCount: s.viewCount,

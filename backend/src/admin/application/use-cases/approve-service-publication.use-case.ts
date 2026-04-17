@@ -11,6 +11,9 @@ import {
   type ServiceResponse,
 } from '../../../services/application/mappers/service-response.mapper';
 import { PublicationSlotsAvailabilityService } from '../../../services/application/services/publication-slots-availability.service';
+import { NotificationType } from '../../../notifications/domain/notification-type';
+import { NotificationsService } from '../../../notifications/notifications.service';
+import { revalidateSiteCache } from '../../../common/seo/revalidate-site-cache';
 
 @Injectable()
 export class ApproveServicePublicationUseCase {
@@ -18,6 +21,7 @@ export class ApproveServicePublicationUseCase {
     @Inject(SERVICE_REPOSITORY)
     private readonly services: IServiceRepository,
     private readonly publicationSlots: PublicationSlotsAvailabilityService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async execute(id: string, adminUserId: string): Promise<ServiceResponse> {
@@ -30,10 +34,13 @@ export class ApproveServicePublicationUseCase {
         'Solo puedes aprobar publicaciones en revisión',
       );
     }
-    await this.publicationSlots.assertMayActivateOneMore(
-      existing.userId,
-      existing.profileId,
-    );
+    await this.publicationSlots.assertMayKeepServiceFeatured({
+      userId: existing.userId,
+      profileId: existing.profileId,
+      serviceId: existing.id,
+      willBeActive: true,
+      isFeatured: existing.isFeatured,
+    });
     const updated = await this.services.update(id, {
       status: 'ACTIVA',
       reviewedAt: new Date(),
@@ -43,6 +50,27 @@ export class ApproveServicePublicationUseCase {
     if (!updated) {
       throw new NotFoundException('Servicio no encontrado');
     }
+    await this.notifications.createForUser({
+      userId: updated.userId,
+      type: NotificationType.ServicePublicationApproved,
+      title: 'Tu publicación fue aprobada',
+      body: `«${updated.title}» ya está visible en el marketplace.`,
+      linkPath: `/servicios/${updated.id}`,
+    });
+    await revalidateSiteCache({
+      paths: [
+        '/',
+        '/explorar',
+        `/servicios/${updated.id}`,
+        `/perfil/${updated.profileId}`,
+      ],
+      tags: [
+        'services:feed',
+        `service:${updated.id}`,
+        `profile:${updated.profileId}:services`,
+        'sitemap:services',
+      ],
+    });
     return toServiceResponse(updated);
   }
 }

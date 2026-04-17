@@ -27,7 +27,6 @@ const FILTERS: Array<{ key: PublicationFilter; label: string }> = [
   { key: "EN_REVISION", label: "En revisión" },
   { key: "REQUIERE_CAMBIOS", label: "Correcciones pendientes" },
   { key: "ACTIVA", label: "Activas" },
-  { key: "BORRADOR", label: "Borradores" },
   { key: "PAUSADA", label: "Pausadas" },
 ];
 
@@ -42,11 +41,10 @@ export function CuentaPublicacionesClient() {
   const [deleting, setDeleting] = useState<ServicePublic | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showReviewNotice, setShowReviewNotice] = useState(false);
-  const [showDraftNotice, setShowDraftNotice] = useState(false);
+  const [showChangesSavedNotice, setShowChangesSavedNotice] = useState(false);
   const initialFilter = searchParams.get("filtro");
   const [filter, setFilter] = useState<PublicationFilter>(
     initialFilter === "ACTIVA" ||
-      initialFilter === "BORRADOR" ||
       initialFilter === "PAUSADA" ||
       initialFilter === "EN_REVISION" ||
       initialFilter === "REQUIERE_CAMBIOS"
@@ -71,21 +69,26 @@ export function CuentaPublicacionesClient() {
       router.replace(qs ? `/cuenta/publicaciones?${qs}` : "/cuenta/publicaciones");
       return;
     }
-    if (toastVal === "draft-saved") {
-      setShowDraftNotice(true);
-      setFilter("BORRADOR");
+    if (toastVal === "changes-saved") {
+      setShowChangesSavedNotice(true);
       const next = new URLSearchParams(searchParams.toString());
       next.delete("toast");
-      next.set("filtro", "BORRADOR");
       const qs = next.toString();
       router.replace(qs ? `/cuenta/publicaciones?${qs}` : "/cuenta/publicaciones");
       return;
     }
 
     const nextFilter = searchParams.get("filtro");
+    if (nextFilter === "BORRADOR") {
+      setFilter("all");
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete("filtro");
+      const qs = next.toString();
+      router.replace(qs ? `/cuenta/publicaciones?${qs}` : "/cuenta/publicaciones");
+      return;
+    }
     if (
       nextFilter === "ACTIVA" ||
-      nextFilter === "BORRADOR" ||
       nextFilter === "PAUSADA" ||
       nextFilter === "EN_REVISION" ||
       nextFilter === "REQUIERE_CAMBIOS"
@@ -218,7 +221,7 @@ export function CuentaPublicacionesClient() {
                 Aún no tienes publicaciones
               </h3>
               <p className="text-sm leading-relaxed text-muted sm:text-[15px]">
-                Publica una habilidad y empieza a recibir mensajes. Puedes guardar borradores y enviarlos a revisión cuando esté listo.
+                Publica una habilidad y empieza a recibir mensajes. La ficha pasa por revisión antes de aparecer en Explorar.
               </p>
             </div>
             <div className="flex w-full flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
@@ -278,13 +281,12 @@ export function CuentaPublicacionesClient() {
               o si hace falta algún ajuste. La verás justo debajo en esta misma vista.
             </div>
           ) : null}
-          {showDraftNotice && filter === "BORRADOR" ? (
+          {showChangesSavedNotice ? (
             <div
               role="status"
-              className="mb-4 rounded-xl border border-border bg-surface-elevated px-4 py-3 text-sm font-medium leading-snug text-muted"
+              className="mb-4 rounded-xl border border-success/25 bg-success/10 px-4 py-3 text-sm font-medium leading-snug text-foreground"
             >
-              Guardaste tu ficha como <strong className="font-semibold text-foreground">borrador</strong>. Sigue
-              editándola y envíala a revisión cuando esté lista.
+              Cambios guardados correctamente.
             </div>
           ) : null}
 

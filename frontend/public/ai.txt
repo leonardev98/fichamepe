@@ -1,0 +1,6 @@
+Canonical: https://fichame.pe
+Sitemap: https://fichame.pe/sitemap.xml
+Content: servicios, perfiles, solicitudes
+ServicePattern: /servicios/{id}
+ProfilePattern: /perfil/{id}
+RequestPattern: /solicitar/{id}

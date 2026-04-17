@@ -59,6 +59,8 @@ export class ServicesController {
       orderBy: query.orderBy ?? 'random',
       search: query.search,
       tags: query.tags,
+      country: query.country,
+      featuredOnly: query.featuredOnly,
     });
   }
 

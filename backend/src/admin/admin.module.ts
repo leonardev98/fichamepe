@@ -19,20 +19,29 @@ import { ServiceOrmEntity } from '../services/infrastructure/persistence/entitie
 import { ProfileOrmEntity } from '../profiles/infrastructure/persistence/entities/profile.orm-entity';
 import { AuthLoginEventOrmEntity } from '../auth/infrastructure/persistence/entities/auth-login-event.orm';
 import { UserPresenceOrmEntity } from '../presence/infrastructure/persistence/entities/user-presence.orm';
+import { ClientRequestOrmEntity } from '../client-requests/infrastructure/persistence/entities/client-request.orm';
+import { ApproveClientRequestUseCase } from './application/use-cases/approve-client-request.use-case';
+import { ListClientRequestReviewQueueUseCase } from './application/use-cases/list-client-request-review-queue.use-case';
+import { RequestClientRequestChangesUseCase } from './application/use-cases/request-client-request-changes.use-case';
+import { ModerationReportsModule } from '../moderation-reports/moderation-reports.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     AuthModule,
+    NotificationsModule,
     ServicesModule,
     UsersModule,
     ProfilesModule,
     PresenceModule,
+    ModerationReportsModule,
     TypeOrmModule.forFeature([
       UserOrmEntity,
       ServiceOrmEntity,
       ProfileOrmEntity,
       AuthLoginEventOrmEntity,
       UserPresenceOrmEntity,
+      ClientRequestOrmEntity,
     ]),
   ],
   controllers: [
@@ -45,6 +54,9 @@ import { UserPresenceOrmEntity } from '../presence/infrastructure/persistence/en
     ListReviewQueueUseCase,
     ApproveServicePublicationUseCase,
     RequestServiceChangesUseCase,
+    ListClientRequestReviewQueueUseCase,
+    ApproveClientRequestUseCase,
+    RequestClientRequestChangesUseCase,
     AdminStatsService,
     AdminUsersService,
   ],

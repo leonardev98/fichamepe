@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { IUserRepository } from '../../../users/domain/repositories';
 import { UserRole } from '../../../users/domain/entities/user';
 import { USER_REPOSITORY } from '../../../users/users.di-tokens';
@@ -14,12 +13,6 @@ import {
   type ServiceResponse,
 } from '../mappers/service-response.mapper';
 import { assertTimedPromoValid } from '../service-promo.validation';
-import {
-  isPublicationQuotaExempt,
-  parseReferralPublishExemptEmails,
-  PUBLICATION_EXEMPT_MAX,
-} from '../../../common/referral/publication-quota';
-import { MAX_SERVICE_RECORDS_NONEXEMPT } from '../../../common/publication/publication-slots';
 
 @Injectable()
 export class CreateServiceUseCase {
@@ -30,7 +23,6 @@ export class CreateServiceUseCase {
     private readonly profiles: IProfileRepository,
     @Inject(USER_REPOSITORY)
     private readonly users: IUserRepository,
-    private readonly config: ConfigService,
   ) {}
 
   async execute(
@@ -52,22 +44,6 @@ export class CreateServiceUseCase {
         userId,
         displayName: freelancerDefaultDisplayName(user.fullName, user.email),
       });
-    }
-    const count = await this.services.countByProfileId(profile.id);
-    const exemptEmails = parseReferralPublishExemptEmails(
-      this.config.get<string>('REFERRAL_PUBLISH_EXEMPT_EMAILS'),
-    );
-    const exempt = isPublicationQuotaExempt(user, exemptEmails);
-    if (exempt) {
-      if (count >= PUBLICATION_EXEMPT_MAX) {
-        throw new BadRequestException(
-          `Solo puedes tener hasta ${PUBLICATION_EXEMPT_MAX} servicios activos o guardados`,
-        );
-      }
-    } else if (count >= MAX_SERVICE_RECORDS_NONEXEMPT) {
-      throw new BadRequestException(
-        `Límite de borradores y fichas en cuenta alcanzado (${MAX_SERVICE_RECORDS_NONEXEMPT} máximo). Elimina borradores viejos o escribe a soporte.`,
-      );
     }
     const listPrice = dto.listPrice ?? null;
     const promoEndsAt =
@@ -92,6 +68,7 @@ export class CreateServiceUseCase {
       promoEndsAt,
       currency: 'PEN',
       coverImageUrl: dto.coverImageUrl ?? null,
+      isFeatured: dto.isFeatured ?? false,
       status: dto.status ?? 'BORRADOR',
       tags: dto.tags ?? [],
       category: dto.category,

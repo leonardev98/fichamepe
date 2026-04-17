@@ -10,7 +10,9 @@ export type ConversationMessageDto = {
 
 export type ConversationThreadDto = {
   id: string;
-  serviceId: string;
+  threadKind: "service" | "client_request";
+  serviceId: string | null;
+  clientRequestId: string | null;
   sellerUserId: string;
   buyerUserId: string;
   participant: {
@@ -41,7 +43,9 @@ function mapMessageDto(m: ConversationMessageDto): ConversationMessage {
 export function mapThreadDto(dto: ConversationThreadDto): ConversationThread {
   return {
     id: dto.id,
-    serviceId: dto.serviceId,
+    threadKind: dto.threadKind,
+    serviceId: dto.serviceId ?? undefined,
+    clientRequestId: dto.clientRequestId ?? undefined,
     sellerUserId: dto.sellerUserId,
     buyerUserId: dto.buyerUserId,
     participant: dto.participant,
@@ -62,7 +66,8 @@ export async function fetchConversations(): Promise<ConversationThread[]> {
 }
 
 export async function createConversation(body: {
-  serviceId: string;
+  serviceId?: string;
+  clientRequestId?: string;
 }): Promise<ConversationThread> {
   const { data } = await api.post<ConversationThreadDto>("/conversations", body);
   return mapThreadDto(data);

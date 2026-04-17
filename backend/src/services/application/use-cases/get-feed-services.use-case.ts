@@ -19,10 +19,12 @@ export class GetFeedServicesUseCase {
   ): Promise<{ services: ServiceResponse[]; total: number }> {
     const limit = Math.min(Math.max(query.limit ?? 20, 1), 40);
     const offset = Math.max(query.offset ?? 0, 0);
+    const country = query.country?.trim().toUpperCase();
     const { services, total } = await this.services.findFeedServices({
       ...query,
       limit,
       offset,
+      country,
     });
     return {
       services: services.map(toServiceResponse),

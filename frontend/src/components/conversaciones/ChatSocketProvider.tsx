@@ -7,9 +7,11 @@ import {
   getChatSocket,
   reconnectChatSocket,
   type MessageNewPayload,
+  type NotificationNewPayload,
 } from "@/lib/chat/chatSocket";
 import { useAuthStore } from "@/store/auth.store";
 import { useConversationsStore } from "@/stores/conversationsStore";
+import { useNotificationsStore } from "@/stores/notificationsStore";
 
 export function ChatSocketProvider() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -32,9 +34,14 @@ export function ChatSocketProvider() {
         createdAt: payload.createdAt,
       });
     };
+    const onNotificationNew = (payload: NotificationNewPayload) => {
+      useNotificationsStore.getState().applySocketNew(payload);
+    };
     sk.on("message:new", onNew);
+    sk.on("notification:new", onNotificationNew);
     return () => {
       sk.off("message:new", onNew);
+      sk.off("notification:new", onNotificationNew);
       disconnectChatSocket();
     };
   }, [accessToken, isAuthenticated]);

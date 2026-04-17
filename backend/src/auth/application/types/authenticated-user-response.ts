@@ -13,19 +13,17 @@ export type AuthenticatedUserResponse = SafeUserPublic & {
   publicationCount: number;
   /** Publicaciones con estado ACTIVA. */
   publicationActiveCount: number;
-  /** Tope de ACTIVA según plan, referidos, compras y migración. */
+  /** Sin tope: publicación ilimitada para todas las cuentas. */
   publicationActiveMax: number | null;
-  /**
-   * Tope de ACTIVA sin contar el impulso del Plan Pro (solo base + referidos + compras + migración).
-   * Sirve para explicar el beneficio Pro: con Pro vigente el tope efectivo es max(10, este valor).
-   */
+  /** Sin tope: publicación ilimitada para todas las cuentas. */
   publicationBaseActiveMax: number | null;
-  /**
-   * Igual que publicationActiveMax para compatibilidad con clientes antiguos
-   * (antes el tope aplicaba al conteo total).
-   */
+  /** Compatibilidad legacy; mantiene null cuando no hay tope. */
   publicationMax: number | null;
   isPublicationExempt: boolean;
+  /** Publicaciones destacadas actualmente activas. */
+  featuredActiveCount: number;
+  /** Cupos de destacadas disponibles por referidos directos. */
+  featuredActiveMax: number;
   /** Personas que se registraron con tu código (estadística). */
   referralDirectCount: number;
   /** false hasta completar verificación por correo (publicar / chatear). */

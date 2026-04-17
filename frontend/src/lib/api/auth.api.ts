@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { normalizeCountryCode } from "@/lib/country";
 import { normalizeAuthUser } from "@/lib/normalize-auth-user";
 import type { AuthUser } from "@/types/auth";
 
@@ -60,6 +61,7 @@ export async function registerAccount(
     accessToken: data.accessToken,
     user: normalizeAuthUser({
       ...u,
+      countryCode: normalizeCountryCode(u.countryCode ?? null),
       avatarUrl: u.avatarUrl ?? null,
       referralCode: u.referralCode ?? "",
       hasReferredBy: u.hasReferredBy ?? false,
@@ -69,6 +71,8 @@ export async function registerAccount(
       publicationBaseActiveMax: u.publicationBaseActiveMax ?? null,
       publicationMax: u.publicationMax ?? null,
       isPublicationExempt: u.isPublicationExempt ?? false,
+      featuredActiveCount: u.featuredActiveCount ?? 0,
+      featuredActiveMax: u.featuredActiveMax ?? u.referralDirectCount ?? 0,
       referralDirectCount: u.referralDirectCount ?? 0,
       referralSlotsEarned: u.referralSlotsEarned ?? 0,
       purchasedPublicationSlots: u.purchasedPublicationSlots ?? 0,
@@ -93,6 +97,7 @@ export async function fetchAuthMe(): Promise<AuthUser> {
   const { data } = await api.get<AuthUser>("/auth/me");
   return normalizeAuthUser({
     ...data,
+    countryCode: normalizeCountryCode(data.countryCode ?? null),
     avatarUrl: data.avatarUrl ?? null,
     referralCode: data.referralCode ?? "",
     hasReferredBy: data.hasReferredBy ?? false,
@@ -102,6 +107,8 @@ export async function fetchAuthMe(): Promise<AuthUser> {
     publicationBaseActiveMax: data.publicationBaseActiveMax ?? null,
     publicationMax: data.publicationMax ?? null,
     isPublicationExempt: data.isPublicationExempt ?? false,
+    featuredActiveCount: data.featuredActiveCount ?? 0,
+    featuredActiveMax: data.featuredActiveMax ?? data.referralDirectCount ?? 0,
     referralDirectCount: data.referralDirectCount ?? 0,
     referralSlotsEarned: data.referralSlotsEarned ?? 0,
     purchasedPublicationSlots: data.purchasedPublicationSlots ?? 0,
