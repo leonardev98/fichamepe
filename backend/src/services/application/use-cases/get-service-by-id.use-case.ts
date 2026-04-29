@@ -5,14 +5,12 @@ import {
   toServiceResponse,
   type ServiceResponse,
 } from '../mappers/service-response.mapper';
-import { IncrementViewUseCase } from './increment-view.use-case';
 
 @Injectable()
 export class GetServiceByIdUseCase {
   constructor(
     @Inject(SERVICE_REPOSITORY)
     private readonly services: IServiceRepository,
-    private readonly incrementView: IncrementViewUseCase,
   ) {}
 
   async execute(id: string): Promise<ServiceResponse> {
@@ -20,11 +18,6 @@ export class GetServiceByIdUseCase {
     if (!found) {
       throw new NotFoundException('Servicio no encontrado');
     }
-    await this.incrementView.execute(id);
-    const updated = await this.services.findActiveById(id);
-    if (!updated) {
-      throw new NotFoundException('Servicio no encontrado');
-    }
-    return toServiceResponse(updated);
+    return toServiceResponse(found);
   }
 }

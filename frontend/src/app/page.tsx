@@ -14,7 +14,7 @@ import { TopRatedSection } from "@/components/sections/TopRatedSection";
 import { NewArrivals } from "@/components/sections/NewArrivals";
 import { ActivityToast } from "@/components/engagement/ActivityToast";
 import { fetchFeedServicesSafe, fetchMergedHomeFeed } from "@/lib/api/services.api";
-import { COUNTRY_COOKIE_NAME, normalizeCountryCode } from "@/lib/country";
+import { COUNTRY_COOKIE_NAME, sanitizeContentCountryFilter } from "@/lib/country";
 import { HOME_MACRO_CATEGORIES } from "@/lib/constants";
 import { macroSlugForService } from "@/lib/service-macro-category";
 import { isActivePromo } from "@/lib/service-promo";
@@ -36,7 +36,7 @@ export const revalidate = 86400;
 
 export default async function Home() {
   const cookieStore = await cookies();
-  const countryCode = normalizeCountryCode(
+  const countryCode = sanitizeContentCountryFilter(
     cookieStore.get(COUNTRY_COOKIE_NAME)?.value ?? null,
   );
   const featuredFeed = await fetchFeedServicesSafe({

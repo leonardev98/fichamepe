@@ -1,23 +1,28 @@
 export const COUNTRY_COOKIE_NAME = "fm_country";
 
+/** Países disponibles en el selector del navbar y filtro de publicaciones. */
+export const NAVBAR_CONTENT_COUNTRY_CODES = [
+  "PE",
+  "MX",
+  "AR",
+  "CO",
+  "CL",
+  "EC",
+] as const;
+
+const NAVBAR_CONTENT_SET = new Set<string>(NAVBAR_CONTENT_COUNTRY_CODES);
+
+const NAVBAR_LABELS_ES: Record<(typeof NAVBAR_CONTENT_COUNTRY_CODES)[number], string> = {
+  PE: "Perú",
+  MX: "México",
+  AR: "Argentina",
+  CO: "Colombia",
+  CL: "Chile",
+  EC: "Ecuador",
+};
+
 const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/;
 const EXCLUDED_CODES = new Set(["XX", "ZZ"]);
-const FALLBACK_COUNTRY_CODES = [
-  "PE",
-  "AR",
-  "BO",
-  "BR",
-  "CL",
-  "CO",
-  "EC",
-  "MX",
-  "PY",
-  "UY",
-  "VE",
-  "US",
-  "CA",
-  "ES",
-];
 
 export type CountryOption = {
   code: string;
@@ -50,6 +55,25 @@ export function normalizeCountryCode(value: string | null | undefined): string |
     return null;
   }
   if (EXCLUDED_CODES.has(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+export function isNavbarContentCountryCode(code: string | null | undefined): boolean {
+  const normalized = normalizeCountryCode(code ?? null);
+  if (!normalized) {
+    return false;
+  }
+  return NAVBAR_CONTENT_SET.has(normalized);
+}
+
+/** Solo códigos permitidos en el selector; el resto se trata como «sin filtro». */
+export function sanitizeContentCountryFilter(
+  value: string | null | undefined,
+): string | null {
+  const normalized = normalizeCountryCode(value ?? null);
+  if (!normalized || !NAVBAR_CONTENT_SET.has(normalized)) {
     return null;
   }
   return normalized;
@@ -108,7 +132,7 @@ export function writeCountryCookie(value: string): void {
   document.cookie = `${COUNTRY_COOKIE_NAME}=${encodeURIComponent(code)}; path=/; max-age=${maxAgeSeconds}; samesite=lax`;
 }
 
-/** Quita el país guardado en cookie (vista «Todo el mundo»). */
+/** Quita el país guardado en cookie (vista sin filtro por país). */
 export function clearCountryCookie(): void {
   if (typeof document === "undefined") {
     return;
@@ -117,44 +141,19 @@ export function clearCountryCookie(): void {
 }
 
 export function getCountryOptions(locale = "es"): CountryOption[] {
-  const codes = getAllCountryCodes();
-  const displayNames = new Intl.DisplayNames([locale], { type: "region" });
-  return codes
-    .map((code) => ({
-      code,
-      label: displayNames.of(code) ?? code,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label, locale));
-}
-
-function getAllCountryCodes(): string[] {
-  if (typeof Intl === "undefined") {
-    return FALLBACK_COUNTRY_CODES;
-  }
-
   try {
-    const names = new Intl.DisplayNames(["en"], { type: "region" });
-    const detected: string[] = [];
-    for (let first = 65; first <= 90; first += 1) {
-      for (let second = 65; second <= 90; second += 1) {
-        const code = String.fromCharCode(first, second);
-        const normalized = normalizeCountryCode(code);
-        if (!normalized) {
-          continue;
-        }
-        const label = names.of(normalized);
-        if (!label || label === normalized) {
-          continue;
-        }
-        detected.push(normalized);
-      }
-    }
-    if (detected.length > 0) {
-      return detected;
+    if (typeof Intl !== "undefined" && typeof Intl.DisplayNames !== "undefined") {
+      const displayNames = new Intl.DisplayNames([locale], { type: "region" });
+      return NAVBAR_CONTENT_COUNTRY_CODES.map((code) => ({
+        code,
+        label: displayNames.of(code) ?? NAVBAR_LABELS_ES[code],
+      }));
     }
   } catch {
-    // Si Intl.DisplayNames no está disponible en el runtime, usamos fallback.
+    // Intl no disponible
   }
-
-  return FALLBACK_COUNTRY_CODES;
+  return NAVBAR_CONTENT_COUNTRY_CODES.map((code) => ({
+    code,
+    label: NAVBAR_LABELS_ES[code],
+  }));
 }

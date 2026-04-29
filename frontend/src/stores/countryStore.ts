@@ -4,8 +4,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   clearCountryCookie,
+  isNavbarContentCountryCode,
   normalizeCountryCode,
   readCountryCookieFromDocument,
+  sanitizeContentCountryFilter,
   writeCountryCookie,
 } from "@/lib/country";
 
@@ -31,7 +33,7 @@ export const useCountryStore = create<CountryState>()(
         set({ countryCode: null, selectionMode: "manual" });
       },
       setManualCountry: (code) => {
-        const normalized = normalizeCountryCode(code);
+        const normalized = sanitizeContentCountryFilter(code);
         if (!normalized) {
           return;
         }
@@ -39,7 +41,7 @@ export const useCountryStore = create<CountryState>()(
         set({ countryCode: normalized, selectionMode: "manual" });
       },
       setAutoCountry: (code) => {
-        const normalized = normalizeCountryCode(code);
+        const normalized = sanitizeContentCountryFilter(code);
         if (!normalized) {
           return;
         }
@@ -62,6 +64,10 @@ export const useCountryStore = create<CountryState>()(
         if (!cookieCode) {
           return;
         }
+        if (!isNavbarContentCountryCode(cookieCode)) {
+          clearCountryCookie();
+          return;
+        }
         set({
           countryCode: cookieCode,
           selectionMode: "auto",
@@ -70,7 +76,7 @@ export const useCountryStore = create<CountryState>()(
     }),
     {
       name: "fichame-country-preference",
-      version: 1,
+      version: 2,
       migrate: (persisted, _version) => {
         if (!persisted || typeof persisted !== "object") {
           return { countryCode: null, selectionMode: null };
@@ -79,15 +85,21 @@ export const useCountryStore = create<CountryState>()(
           countryCode?: unknown;
           selectionMode?: unknown;
         };
-        const countryCode =
+        const rawCode =
           typeof p.countryCode === "string" || p.countryCode === null
             ? p.countryCode
             : null;
+        const countryCode = sanitizeContentCountryFilter(rawCode ?? undefined);
         const sm = p.selectionMode;
         const selectionMode: CountrySelectionMode =
           sm === "manual" || sm === "auto" || sm === null ? sm : null;
         if (selectionMode === "auto") {
           return { countryCode: null, selectionMode: null };
+        }
+        if (!countryCode) {
+          const nextMode: CountrySelectionMode =
+            selectionMode === "manual" ? "manual" : null;
+          return { countryCode: null, selectionMode: nextMode };
         }
         return { countryCode, selectionMode };
       },

@@ -93,6 +93,8 @@ export function ServiceCard({
     "Servicio destacado";
   const statusChip = publicationStatusChip(service);
   const showActions = Boolean(onEdit || onPause || onReactivate || onPublish || onDelete);
+  const viewCount = service.viewCount ?? 0;
+  const hasViews = viewCount > 0;
   const cardHref = `/servicios/${service.id}`;
   const sellerProfileHref = service.profileId ? `/perfil/${service.profileId}` : null;
 
@@ -294,9 +296,20 @@ export function ServiceCard({
       <div className="mx-4 mb-4 mt-auto flex items-end justify-between gap-3 border-t border-border pt-3 sm:mx-5">
         <PriceDisplay variant="card" price={service.price} previousPrice={service.previousPrice} />
         <div className="flex items-center gap-2">
-          <p className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted">
-            <Eye className="size-3.5" aria-hidden />
-            {service.viewCount} vistas
+          <p
+            className={`inline-flex shrink-0 items-center gap-1 ${
+              hasViews
+                ? "gap-1.5 text-sm font-semibold tabular-nums text-foreground"
+                : "text-[11px] text-muted"
+            }`}
+          >
+            <Eye
+              className={hasViews ? "size-4 shrink-0 text-primary" : "size-3.5 shrink-0"}
+              aria-hidden
+            />
+            <span>
+              {viewCount} {viewCount === 1 ? "vista" : "vistas"}
+            </span>
           </p>
           {showActions ? (
             <Dropdown>

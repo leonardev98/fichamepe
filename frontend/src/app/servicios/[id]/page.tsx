@@ -8,6 +8,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { ServiceDetailActions } from "@/components/services/ServiceDetailActions";
+import { ServiceViewTracker } from "@/components/services/ServiceViewTracker";
 import { ServicePublicUnavailable } from "@/components/services/ServicePublicUnavailable";
 import { ServiceReviewsSection } from "@/components/reviews/ServiceReviewsSection";
 import {
@@ -150,6 +151,7 @@ export default async function ServicioDetailPage({ params }: PageProps) {
 
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
+      <ServiceViewTracker serviceId={service.id} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -237,7 +239,8 @@ export default async function ServicioDetailPage({ params }: PageProps) {
                 </p>
                 <p className="inline-flex items-center gap-2">
                   <Eye className="size-4 text-primary" aria-hidden />
-                  {service.viewCount} vistas
+                  {service.viewCount}{" "}
+                  {service.viewCount === 1 ? "vista" : "vistas"}
                 </p>
               </div>
             </div>

@@ -13,7 +13,7 @@ import { patchCurrentUser } from "@/lib/api/user-profile.api";
 import { useAuthStore } from "@/store/auth.store";
 import { useCountryStore } from "@/stores/countryStore";
 
-const WORLD_LABEL = "Todo el mundo";
+const WORLD_LABEL = "Todos los países";
 const WORLD_ROW_ID = "country-option-world";
 
 export function CountrySelector({
@@ -205,7 +205,7 @@ export function CountrySelector({
       <button
         ref={triggerRef}
         type="button"
-        aria-label="Seleccionar país o ver todo el mundo"
+        aria-label="Seleccionar país o ver publicaciones de todos los países"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? listboxId : undefined}

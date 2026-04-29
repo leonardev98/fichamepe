@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -31,6 +32,7 @@ import { RemoveServiceFavoriteUseCase } from '../../application/use-cases/remove
 import { ToggleServiceActiveUseCase } from '../../application/use-cases/toggle-service-active.use-case';
 import { UpdateServiceUseCase } from '../../application/use-cases/update-service.use-case';
 import { SetServiceStatusUseCase } from '../../application/use-cases/set-service-status.use-case';
+import { RecordServiceViewUseCase } from '../../application/use-cases/record-service-view.use-case';
 
 @Controller('services')
 export class ServicesController {
@@ -38,6 +40,7 @@ export class ServicesController {
     private readonly getFeed: GetFeedServicesUseCase,
     private readonly getByProfile: GetServicesByProfileUseCase,
     private readonly getById: GetServiceByIdUseCase,
+    private readonly recordServiceView: RecordServiceViewUseCase,
     private readonly createService: CreateServiceUseCase,
     private readonly updateService: UpdateServiceUseCase,
     private readonly toggleActive: ToggleServiceActiveUseCase,
@@ -112,6 +115,16 @@ export class ServicesController {
     @Param('serviceId', new ParseUUIDPipe()) serviceId: string,
   ) {
     return this.removeFavorite.execute(user.userId, serviceId);
+  }
+
+  /** Registra una vista real (navegación al detalle); no se dispara con prefetch de enlaces. */
+  @Post(':id/view')
+  async recordView(@Param('id', new ParseUUIDPipe()) id: string): Promise<{ ok: true }> {
+    const ok = await this.recordServiceView.execute(id);
+    if (!ok) {
+      throw new NotFoundException();
+    }
+    return { ok: true };
   }
 
   @Get(':id')

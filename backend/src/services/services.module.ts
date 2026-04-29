@@ -24,6 +24,7 @@ import { RemoveServiceFavoriteUseCase } from './application/use-cases/remove-ser
 import { SetServiceStatusUseCase } from './application/use-cases/set-service-status.use-case';
 import { GetMyServiceByIdUseCase } from './application/use-cases/get-my-service-by-id.use-case';
 import { PublicationSlotsAvailabilityService } from './application/services/publication-slots-availability.service';
+import { RecordServiceViewUseCase } from './application/use-cases/record-service-view.use-case';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { PublicationSlotsAvailabilityService } from './application/services/publ
   providers: [
     { provide: SERVICE_REPOSITORY, useClass: ServiceTypeOrmRepository },
     IncrementViewUseCase,
+    RecordServiceViewUseCase,
     GetFeedServicesUseCase,
     GetServicesByProfileUseCase,
     GetServiceByIdUseCase,
