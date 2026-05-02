@@ -6,6 +6,8 @@ import { ArrowLeft, Send } from "lucide-react";
 import { Footer } from "@/components/layout/Footer";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Navbar } from "@/components/layout/Navbar";
+import { CoworkingConversationPrompt } from "@/components/conversaciones/CoworkingConversationPrompt";
+import { CoworkingSpacesPanel } from "@/components/conversaciones/CoworkingSpacesPanel";
 import { ConversationListItem } from "@/components/conversaciones/ConversationListItem";
 import { ConversationPerspectiveChip } from "@/components/conversaciones/ConversationPerspectiveChip";
 import { ConversationServiceSummaryCard } from "@/components/conversaciones/ConversationServiceSummaryCard";
@@ -16,10 +18,13 @@ import {
   getConversationPerspective,
   perspectiveContextLine,
 } from "@/components/conversaciones/conversation-utils";
+import { mockCoworkingSpaces } from "@/lib/coworking/mockCoworkingSpaces";
+import { shouldShowCoworkingPrompt } from "@/lib/coworking/coworkingPrompt";
 import { useAuthStore } from "@/store/auth.store";
 import { useConversationsStore } from "@/stores/conversationsStore";
 
 const OPEN_CONV_PARAM = "open";
+const COWORKING_DISMISSED_STORAGE_KEY = "fichamepe:coworkingPromptDismissed";
 
 type InboxTab = "buyer" | "seller" | "other";
 
@@ -53,6 +58,22 @@ function ConversacionesContent() {
   const userId = user?.id ?? null;
   const [draft, setDraft] = useState("");
   const [mobileConversationId, setMobileConversationId] = useState<string | null>(null);
+  const [dismissedCoworkingPromptIds, setDismissedCoworkingPromptIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(COWORKING_DISMISSED_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+  const [coworkingPanelConversationId, setCoworkingPanelConversationId] = useState<string | null>(
+    null,
+  );
+  const [selectedCoworkingByConversation, setSelectedCoworkingByConversation] = useState<
+    Record<string, string>
+  >({});
 
   const conversations = useConversationsStore((state) => state.conversations);
   const activeConversationId = useConversationsStore((state) => state.activeConversationId);
@@ -146,6 +167,25 @@ function ConversacionesContent() {
     `rounded-full px-3 py-1.5 text-xs font-semibold transition ${
       active ? "bg-primary text-white shadow-sm" : "text-muted hover:bg-primary/5 hover:text-foreground"
     }`;
+
+  const dismissCoworkingPrompt = useCallback((conversationId: string) => {
+    setDismissedCoworkingPromptIds((current) => {
+      const next = current.includes(conversationId) ? current : [...current, conversationId];
+      try {
+        window.localStorage.setItem(COWORKING_DISMISSED_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* si no se puede persistir, igual se oculta durante la sesion */
+      }
+      return next;
+    });
+  }, []);
+
+  const selectCoworkingSpace = useCallback((conversationId: string, spaceId: string) => {
+    setSelectedCoworkingByConversation((current) => ({
+      ...current,
+      [conversationId]: spaceId,
+    }));
+  }, []);
 
   const submitMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -248,6 +288,30 @@ function ConversacionesContent() {
                   {desktopConversation.messages.map((message) => (
                     <MessageBubble key={message.id} message={message} />
                   ))}
+                  {coworkingPanelConversationId === desktopConversation.id ? (
+                    <div className="pt-2">
+                      <CoworkingSpacesPanel
+                        spaces={mockCoworkingSpaces}
+                        selectedSpaceId={
+                          selectedCoworkingByConversation[desktopConversation.id] ?? null
+                        }
+                        onSelectSpace={(spaceId) =>
+                          selectCoworkingSpace(desktopConversation.id, spaceId)
+                        }
+                        onBack={() => setCoworkingPanelConversationId(null)}
+                      />
+                    </div>
+                  ) : null}
+                  {shouldShowCoworkingPrompt(desktopConversation, userId) &&
+                  !dismissedCoworkingPromptIds.includes(desktopConversation.id) &&
+                  coworkingPanelConversationId !== desktopConversation.id ? (
+                    <div className="pt-2">
+                      <CoworkingConversationPrompt
+                        onOpenSpaces={() => setCoworkingPanelConversationId(desktopConversation.id)}
+                        onDismiss={() => dismissCoworkingPrompt(desktopConversation.id)}
+                      />
+                    </div>
+                  ) : null}
                 </div>
                 <form onSubmit={submitMessage} className="border-t border-border p-4">
                   <div className="flex items-center gap-2">
@@ -330,6 +394,28 @@ function ConversacionesContent() {
                 {mobileConversation.messages.map((message) => (
                   <MessageBubble key={message.id} message={message} />
                 ))}
+                {coworkingPanelConversationId === mobileConversation.id ? (
+                  <div className="pt-2">
+                    <CoworkingSpacesPanel
+                      spaces={mockCoworkingSpaces}
+                      selectedSpaceId={selectedCoworkingByConversation[mobileConversation.id] ?? null}
+                      onSelectSpace={(spaceId) =>
+                        selectCoworkingSpace(mobileConversation.id, spaceId)
+                      }
+                      onBack={() => setCoworkingPanelConversationId(null)}
+                    />
+                  </div>
+                ) : null}
+                {shouldShowCoworkingPrompt(mobileConversation, userId) &&
+                !dismissedCoworkingPromptIds.includes(mobileConversation.id) &&
+                coworkingPanelConversationId !== mobileConversation.id ? (
+                  <div className="pt-2">
+                    <CoworkingConversationPrompt
+                      onOpenSpaces={() => setCoworkingPanelConversationId(mobileConversation.id)}
+                      onDismiss={() => dismissCoworkingPrompt(mobileConversation.id)}
+                    />
+                  </div>
+                ) : null}
               </div>
               <form onSubmit={submitMessage} className="mt-3 border-t border-border pt-3">
                 <div className="flex items-center gap-2">
